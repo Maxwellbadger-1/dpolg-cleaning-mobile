@@ -292,17 +292,26 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        statements: [
-                            "SELECT * FROM cleaning_tasks ORDER BY priority DESC, room_name ASC"
+                        requests: [
+                            {
+                                type: "execute",
+                                stmt: {
+                                    sql: "SELECT * FROM cleaning_tasks ORDER BY priority DESC, room_name ASC"
+                                }
+                            },
+                            {
+                                type: "close",
+                                stmt: { sql: "" }
+                            }
                         ]
                     })
                 });
 
                 const data = await response.json();
 
-                if (data.results && data.results[0] && data.results[0].results) {
-                    const rows = data.results[0].results.rows;
-                    const columns = data.results[0].results.columns;
+                if (data.results && data.results[0] && data.results[0].response && data.results[0].response.result) {
+                    const rows = data.results[0].response.result.rows;
+                    const columns = data.results[0].response.result.cols;
 
                     // Konvertiere Turso-Format zu Objekten
                     allTasks = rows.map(row => {
@@ -384,8 +393,17 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        statements: [
-                            `UPDATE cleaning_tasks SET status = '${newStatus}', completed_at = ${newStatus === 'done' ? "datetime('now')" : 'NULL'} WHERE id = ${taskId}`
+                        requests: [
+                            {
+                                type: "execute",
+                                stmt: {
+                                    sql: `UPDATE cleaning_tasks SET status = '${newStatus}', completed_at = ${newStatus === 'done' ? "datetime('now')" : 'NULL'} WHERE id = ${taskId}`
+                                }
+                            },
+                            {
+                                type: "close",
+                                stmt: { sql: "" }
+                            }
                         ]
                     })
                 });
