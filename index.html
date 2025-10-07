@@ -317,17 +317,50 @@
             overflow-y: visible;
             -webkit-overflow-scrolling: touch;
             padding-bottom: 20px;
+            margin: 0 -16px;
+            padding-left: 16px;
+            padding-right: 16px;
         }
 
         .timeline-grid {
             display: grid;
-            grid-template-columns: 120px repeat(7, minmax(200px, 1fr));
+            grid-template-columns: 120px repeat(31, 140px);
             gap: 1px;
             background: var(--slate-700);
             border: 1px solid var(--slate-700);
             border-radius: 12px;
             overflow: hidden;
-            min-width: 1200px;
+            min-width: fit-content;
+        }
+
+        .timeline-month-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding: 4px;
+        }
+
+        .timeline-month-btn {
+            padding: 12px 24px;
+            background: var(--slate-700);
+            color: var(--slate-300);
+            border: 2px solid var(--slate-600);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .timeline-month-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .timeline-month-btn:hover {
+            background: var(--slate-600);
         }
 
         .timeline-header {
@@ -353,11 +386,15 @@
             background: var(--slate-800);
             padding: 16px 12px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             color: white;
             position: sticky;
             left: 0;
             z-index: 5;
+            display: flex;
+            align-items: center;
+            word-break: break-word;
+            line-height: 1.3;
         }
 
         .timeline-cell {
@@ -394,6 +431,18 @@
         .timeline-task.completed {
             opacity: 0.6;
             background: var(--slate-700);
+        }
+
+        /* Occupied (nur belegt, noch nicht reinigen) */
+        .timeline-task.occupied {
+            background: var(--slate-700);
+            border: 1px solid var(--slate-600);
+            opacity: 0.7;
+            cursor: default;
+        }
+
+        .timeline-task.occupied .timeline-task-guest {
+            color: var(--slate-400);
         }
 
         .timeline-task-guest {
@@ -443,6 +492,8 @@
         let currentDate = new Date().toISOString().split('T')[0];
         let allTasks = [];
         let currentView = 'list';
+        let selectedMonth = new Date().getMonth(); // 0-11
+        let selectedYear = new Date().getFullYear();
 
         // Datum formatieren
         function formatDate(dateStr) {
@@ -486,6 +537,7 @@
         // Tasks von Turso laden
         async function loadTasks() {
             try {
+                console.log('🔄 Loading tasks from Turso...');
                 const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
                     method: 'POST',
                     headers: {
@@ -508,11 +560,15 @@
                     })
                 });
 
+                console.log('✅ Response received:', response.status);
                 const data = await response.json();
+                console.log('📦 Data:', JSON.stringify(data, null, 2));
 
                 if (data.results && data.results[0] && data.results[0].response && data.results[0].response.result) {
                     const rows = data.results[0].response.result.rows;
                     const columns = data.results[0].response.result.cols;
+
+                    console.log(`📊 Found ${rows.length} tasks`);
 
                     // Konvertiere Turso v2 Format zu Objekten
                     // Rows sind Arrays von {type, value} Objekten
@@ -526,11 +582,14 @@
                         return task;
                     });
 
+                    console.log('✅ Tasks loaded:', allTasks.length);
                     displayTasks();
                 } else {
+                    console.error('❌ No data in response:', data);
                     showError('Keine Daten erhalten');
                 }
             } catch (error) {
+                console.error('❌ Error loading tasks:', error);
                 showError('Fehler beim Laden: ' + error.message);
             }
         }
@@ -550,6 +609,12 @@
             tabs.style.display = view === 'list' ? 'flex' : 'none';
 
             // View neu rendern
+            displayTasks();
+        }
+
+        function selectMonth(month, year) {
+            selectedMonth = month;
+            selectedYear = year;
             displayTasks();
         }
 
@@ -628,28 +693,102 @@
                 return;
             }
 
-            // Erstelle 7-Tage Datum-Array ab heute
+            // Erstelle Datum-Array für den gewählten Monat
             const dates = [];
-            for (let i = 0; i < 7; i++) {
-                const date = new Date();
-                date.setDate(date.getDate() + i);
+            const year = selectedYear;
+            const month = selectedMonth;
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
                 dates.push(date.toISOString().split('T')[0]);
             }
 
-            // Gruppiere Tasks nach Zimmer
+            // Monats-Buttons
+            const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+                               'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+            let monthSelectorHTML = '<div class="timeline-month-selector">';
+            const today = new Date();
+            for (let i = 0; i < 3; i++) {
+                const monthDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                const m = monthDate.getMonth();
+                const y = monthDate.getFullYear();
+                const isActive = (m === selectedMonth && y === selectedYear);
+                monthSelectorHTML += `
+                    <button class="timeline-month-btn ${isActive ? 'active' : ''}"
+                            onclick="selectMonth(${m}, ${y})">
+                        ${monthNames[m]} ${y}
+                    </button>
+                `;
+            }
+            monthSelectorHTML += '</div>';
+
+            // Gruppiere Tasks nach Zimmer und expandiere Buchungen über mehrere Tage
             const roomTasks = {};
             allTasks.forEach(task => {
                 if (!roomTasks[task.room_name]) {
                     roomTasks[task.room_name] = {};
                 }
-                roomTasks[task.room_name][task.date] = task;
+
+                // Parse Check-in/Check-out aus extras JSON
+                let checkInDate = null;
+                let checkOutDate = task.date; // Checkout Date
+
+                try {
+                    const extras = JSON.parse(task.extras || '{}');
+                    // Versuche Check-in aus verschiedenen Quellen zu extrahieren
+                    if (extras.original_checkin) {
+                        checkInDate = extras.original_checkin;
+                    } else if (task.checkin_time) {
+                        checkInDate = task.checkin_time;
+                    }
+                } catch (e) {
+                    console.error('Error parsing extras:', e);
+                }
+
+                // Wenn wir Check-in haben, erstelle "occupied" Einträge für alle Tage zwischen Check-in und Check-out
+                if (checkInDate && checkInDate !== checkOutDate) {
+                    // Verwende String-Manipulation statt Date-Objekte (wegen Timezone-Problemen)
+                    const [startYear, startMonth, startDay] = checkInDate.split('-').map(Number);
+                    const [endYear, endMonth, endDay] = checkOutDate.split('-').map(Number);
+
+                    const start = new Date(startYear, startMonth - 1, startDay);
+                    const end = new Date(endYear, endMonth - 1, endDay);
+
+                    // Alle Tage zwischen Check-in (inklusive) und Check-out (exklusiv)
+                    let currentDate = new Date(start);
+                    while (currentDate < end) {
+                        const year = currentDate.getFullYear();
+                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(currentDate.getDate()).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${day}`;
+
+                        // Nur hinzufügen wenn es NICHT der checkout-Tag ist
+                        if (dateStr !== checkOutDate && !roomTasks[task.room_name][dateStr]) {
+                            roomTasks[task.room_name][dateStr] = {
+                                ...task,
+                                isOccupied: true, // Markiere als "nur belegt"
+                                displayDate: dateStr
+                            };
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                }
+
+                // Check-out Tag (= Reinigungstag)
+                roomTasks[task.room_name][checkOutDate] = {
+                    ...task,
+                    isOccupied: false, // Das ist der Reinigungstag
+                    displayDate: checkOutDate
+                };
             });
 
             // Sortiere Zimmer alphabetisch
             const sortedRooms = Object.keys(roomTasks).sort();
 
-            // Baue Timeline Grid HTML
-            let html = '<div class="timeline-container"><div class="timeline-grid">';
+            // Baue Timeline Grid HTML mit dynamischen Spalten
+            let html = `<div class="timeline-container"><div class="timeline-grid" style="grid-template-columns: 120px repeat(${daysInMonth}, 140px);">`;
 
             // Header Row
             html += '<div class="timeline-header room-col">Zimmer</div>';
@@ -670,21 +809,33 @@
 
                     if (task) {
                         const isCompleted = task.status === 'done';
+                        const isOccupied = task.isOccupied;
                         const priorityClass = task.priority === 'high' ? 'priority-high' : 'priority-normal';
 
-                        html += `
-                            <div class="timeline-task ${priorityClass} ${isCompleted ? 'completed' : ''}"
-                                 onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}')">
-                                <div class="timeline-task-guest">${task.guest_name}</div>
-                                <div class="timeline-task-time">⏰ ${task.checkout_time}</div>
-                                <div class="timeline-task-icons">
-                                    ${task.has_dog ? '🐕' : ''}
-                                    ${task.needs_bedding ? '🛏️' : ''}
-                                    ${task.guest_count ? '👥' + task.guest_count : ''}
-                                    ${isCompleted ? '✅' : ''}
+                        if (isOccupied) {
+                            // Nur belegt (nicht reinigen)
+                            html += `
+                                <div class="timeline-task occupied">
+                                    <div class="timeline-task-guest">${task.guest_name}</div>
+                                    <div class="timeline-task-time">🛏️ Belegt</div>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        } else {
+                            // Check-out / Reinigungstag
+                            html += `
+                                <div class="timeline-task ${priorityClass} ${isCompleted ? 'completed' : ''}"
+                                     onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}')">
+                                    <div class="timeline-task-guest">${task.guest_name}</div>
+                                    <div class="timeline-task-time">⏰ ${task.checkout_time}</div>
+                                    <div class="timeline-task-icons">
+                                        ${task.has_dog ? '🐕' : ''}
+                                        ${task.needs_bedding ? '🛏️' : ''}
+                                        ${task.guest_count ? '👥' + task.guest_count : ''}
+                                        ${isCompleted ? '✅' : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }
                     }
 
                     html += '</div>';
@@ -692,7 +843,9 @@
             });
 
             html += '</div></div>';
-            content.innerHTML = html;
+
+            // Füge Monats-Buttons am Anfang hinzu
+            content.innerHTML = monthSelectorHTML + html;
         }
 
         // Task Status updaten
