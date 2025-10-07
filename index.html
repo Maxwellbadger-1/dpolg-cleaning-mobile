@@ -45,17 +45,53 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
         .header h1 {
             font-size: 24px;
             font-weight: 700;
             color: white;
-            margin-bottom: 6px;
+            margin: 0;
         }
 
         .header .date {
             color: var(--slate-400);
             font-size: 14px;
             font-weight: 500;
+        }
+
+        .view-switcher {
+            display: flex;
+            gap: 4px;
+            background: var(--slate-700);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--slate-300);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .view-btn:active {
+            transform: scale(0.98);
         }
 
         .tabs {
@@ -278,7 +314,13 @@
 </head>
 <body>
     <div class="header">
-        <h1>🧹 DPolG Putzplan</h1>
+        <div class="header-top">
+            <h1>🧹 DPolG Putzplan</h1>
+            <div class="view-switcher">
+                <button class="view-btn active" onclick="switchView('list')">📋 Liste</button>
+                <button class="view-btn" onclick="switchView('timeline')">📅 Timeline</button>
+            </div>
+        </div>
         <div class="date" id="current-date"></div>
     </div>
 
@@ -296,6 +338,7 @@
 
         let currentDate = new Date().toISOString().split('T')[0];
         let allTasks = [];
+        let currentView = 'list';
 
         // Datum formatieren
         function formatDate(dateStr) {
@@ -388,8 +431,31 @@
             }
         }
 
+        // View wechseln
+        function switchView(view) {
+            currentView = view;
+
+            // Button states updaten
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // View neu rendern
+            displayTasks();
+        }
+
         // Tasks anzeigen
         function displayTasks() {
+            if (currentView === 'list') {
+                displayListView();
+            } else {
+                displayTimelineView();
+            }
+        }
+
+        // Listen-Ansicht
+        function displayListView() {
             const content = document.getElementById('content');
             const todayTasks = allTasks.filter(task => task.date === currentDate);
 
@@ -438,6 +504,17 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        // Timeline-Ansicht (Placeholder für Schritt 3)
+        function displayTimelineView() {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="empty-state">
+                    <div class="emoji">📅</div>
+                    <div class="text">Timeline-View wird in Schritt 3 implementiert...</div>
+                </div>
+            `;
         }
 
         // Task Status updaten
