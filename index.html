@@ -313,11 +313,14 @@
                     const rows = data.results[0].response.result.rows;
                     const columns = data.results[0].response.result.cols;
 
-                    // Konvertiere Turso-Format zu Objekten
+                    // Konvertiere Turso v2 Format zu Objekten
+                    // Rows sind Arrays von {type, value} Objekten
                     allTasks = rows.map(row => {
                         const task = {};
                         columns.forEach((col, idx) => {
-                            task[col] = row[idx];
+                            const cell = row[idx];
+                            // Extrahiere den Wert aus {type, value}
+                            task[col.name] = cell.type === 'null' ? null : cell.value;
                         });
                         return task;
                     });
