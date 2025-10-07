@@ -94,6 +94,40 @@
             transform: scale(0.98);
         }
 
+        .date-picker-wrapper {
+            background: var(--slate-800);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .date-picker-wrapper label {
+            display: block;
+            color: var(--slate-300);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .date-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--slate-700);
+            border: 1px solid var(--slate-600);
+            border-radius: 10px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .date-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
         .tabs {
             display: flex;
             gap: 10px;
@@ -390,11 +424,12 @@
             color: white;
             position: sticky;
             left: 0;
-            z-index: 5;
+            z-index: 10;
             display: flex;
             align-items: center;
             word-break: break-word;
             line-height: 1.3;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.2);
         }
 
         .timeline-cell {
@@ -477,6 +512,16 @@
         <div class="date" id="current-date"></div>
     </div>
 
+    <div id="date-picker-container" class="date-picker-wrapper" style="display: none;">
+        <label for="datePicker">Datum auswählen:</label>
+        <input
+            type="date"
+            id="datePicker"
+            class="date-input"
+            onchange="selectDateFromPicker(this.value)"
+        />
+    </div>
+
     <div class="tabs" id="tabs"></div>
 
     <div id="content">
@@ -494,6 +539,8 @@
         let currentView = 'list';
         let selectedMonth = new Date().getMonth(); // 0-11
         let selectedYear = new Date().getFullYear();
+        let minDate = null;
+        let maxDate = null;
 
         // Datum formatieren
         function formatDate(dateStr) {
@@ -530,8 +577,72 @@
         function selectDate(date, tabElement) {
             currentDate = date;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            tabElement.classList.add('active');
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+
+            // Update date picker value
+            const datePicker = document.getElementById('datePicker');
+            if (datePicker) {
+                datePicker.value = date;
+            }
+
             displayTasks();
+        }
+
+        // Date picker selection handler
+        function selectDateFromPicker(dateStr) {
+            if (!dateStr) return;
+
+            currentDate = dateStr;
+
+            // Update active tab if date is within next 7 days
+            updateActiveTab(dateStr);
+
+            displayTasks();
+        }
+
+        // Update active tab based on selected date
+        function updateActiveTab(dateStr) {
+            const tabs = document.querySelectorAll('.tab');
+            let foundTab = false;
+
+            tabs.forEach((tab, index) => {
+                const date = new Date();
+                date.setDate(date.getDate() + index);
+                const tabDateStr = date.toISOString().split('T')[0];
+
+                if (tabDateStr === dateStr) {
+                    tab.classList.add('active');
+                    foundTab = true;
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // If date is outside 7-day range, deactivate all tabs
+            if (!foundTab) {
+                tabs.forEach(t => t.classList.remove('active'));
+            }
+        }
+
+        // Initialize date picker with min/max dates
+        function initializeDatePicker() {
+            if (allTasks.length === 0) return;
+
+            // Find min and max dates from tasks
+            const dates = allTasks.map(task => task.date).filter(d => d);
+            if (dates.length === 0) return;
+
+            minDate = dates.reduce((min, date) => date < min ? date : min, dates[0]);
+            maxDate = dates.reduce((max, date) => date > max ? date : max, dates[0]);
+
+            const datePicker = document.getElementById('datePicker');
+            if (datePicker) {
+                datePicker.min = minDate;
+                datePicker.max = maxDate;
+                datePicker.value = currentDate;
+            }
         }
 
         // Tasks von Turso laden
@@ -583,6 +694,7 @@
                     });
 
                     console.log('✅ Tasks loaded:', allTasks.length);
+                    initializeDatePicker();
                     displayTasks();
                 } else {
                     console.error('❌ No data in response:', data);
@@ -604,8 +716,10 @@
             });
             event.target.classList.add('active');
 
-            // Tabs nur in List-View anzeigen
+            // Date picker und Tabs nur in List-View anzeigen
+            const datePickerContainer = document.getElementById('date-picker-container');
             const tabs = document.getElementById('tabs');
+            datePickerContainer.style.display = view === 'list' ? 'block' : 'none';
             tabs.style.display = view === 'list' ? 'flex' : 'none';
 
             // View neu rendern
