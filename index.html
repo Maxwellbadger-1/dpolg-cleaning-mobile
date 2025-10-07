@@ -310,6 +310,110 @@
         .refresh-btn:active {
             transform: scale(0.95);
         }
+
+        /* Timeline View Styles */
+        .timeline-container {
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 20px;
+        }
+
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: 120px repeat(7, minmax(200px, 1fr));
+            gap: 1px;
+            background: var(--slate-700);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            overflow: hidden;
+            min-width: 1200px;
+        }
+
+        .timeline-header {
+            background: var(--slate-800);
+            padding: 16px 12px;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .timeline-header.room-col {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            z-index: 11;
+        }
+
+        .timeline-room {
+            background: var(--slate-800);
+            padding: 16px 12px;
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+
+        .timeline-cell {
+            background: var(--slate-900);
+            padding: 8px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .timeline-task {
+            background: var(--slate-800);
+            border: 1px solid var(--slate-700);
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .timeline-task:active {
+            transform: scale(0.98);
+        }
+
+        .timeline-task.priority-high {
+            border-left: 3px solid var(--danger);
+        }
+
+        .timeline-task.priority-normal {
+            border-left: 3px solid var(--primary);
+        }
+
+        .timeline-task.completed {
+            opacity: 0.6;
+            background: var(--slate-700);
+        }
+
+        .timeline-task-guest {
+            font-weight: 600;
+            color: white;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+
+        .timeline-task-time {
+            color: var(--slate-400);
+            font-size: 11px;
+        }
+
+        .timeline-task-icons {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
@@ -441,6 +545,10 @@
             });
             event.target.classList.add('active');
 
+            // Tabs nur in List-View anzeigen
+            const tabs = document.getElementById('tabs');
+            tabs.style.display = view === 'list' ? 'flex' : 'none';
+
             // View neu rendern
             displayTasks();
         }
@@ -506,15 +614,85 @@
             }).join('');
         }
 
-        // Timeline-Ansicht (Placeholder für Schritt 3)
+        // Timeline-Ansicht
         function displayTimelineView() {
             const content = document.getElementById('content');
-            content.innerHTML = `
-                <div class="empty-state">
-                    <div class="emoji">📅</div>
-                    <div class="text">Timeline-View wird in Schritt 3 implementiert...</div>
-                </div>
-            `;
+
+            if (allTasks.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="emoji">📅</div>
+                        <div class="text">Keine Aufgaben für diese Woche</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Erstelle 7-Tage Datum-Array ab heute
+            const dates = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() + i);
+                dates.push(date.toISOString().split('T')[0]);
+            }
+
+            // Gruppiere Tasks nach Zimmer
+            const roomTasks = {};
+            allTasks.forEach(task => {
+                if (!roomTasks[task.room_name]) {
+                    roomTasks[task.room_name] = {};
+                }
+                roomTasks[task.room_name][task.date] = task;
+            });
+
+            // Sortiere Zimmer alphabetisch
+            const sortedRooms = Object.keys(roomTasks).sort();
+
+            // Baue Timeline Grid HTML
+            let html = '<div class="timeline-container"><div class="timeline-grid">';
+
+            // Header Row
+            html += '<div class="timeline-header room-col">Zimmer</div>';
+            dates.forEach(date => {
+                const dateObj = new Date(date + 'T00:00:00');
+                const dayName = dateObj.toLocaleDateString('de-DE', { weekday: 'short' });
+                const dayNum = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                html += `<div class="timeline-header">${dayName}<br>${dayNum}</div>`;
+            });
+
+            // Room Rows
+            sortedRooms.forEach(room => {
+                html += `<div class="timeline-room">${room}</div>`;
+
+                dates.forEach(date => {
+                    const task = roomTasks[room][date];
+                    html += '<div class="timeline-cell">';
+
+                    if (task) {
+                        const isCompleted = task.status === 'done';
+                        const priorityClass = task.priority === 'high' ? 'priority-high' : 'priority-normal';
+
+                        html += `
+                            <div class="timeline-task ${priorityClass} ${isCompleted ? 'completed' : ''}"
+                                 onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}')">
+                                <div class="timeline-task-guest">${task.guest_name}</div>
+                                <div class="timeline-task-time">⏰ ${task.checkout_time}</div>
+                                <div class="timeline-task-icons">
+                                    ${task.has_dog ? '🐕' : ''}
+                                    ${task.needs_bedding ? '🛏️' : ''}
+                                    ${task.guest_count ? '👥' + task.guest_count : ''}
+                                    ${isCompleted ? '✅' : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    html += '</div>';
+                });
+            });
+
+            html += '</div></div>';
+            content.innerHTML = html;
         }
 
         // Task Status updaten
