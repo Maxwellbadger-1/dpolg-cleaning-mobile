@@ -787,9 +787,9 @@
                         </div>
 
                         <div class="services">
-                            ${task.has_dog ? '<span class="service-tag">🐕 Hund</span>' : ''}
-                            ${task.needs_bedding ? '<span class="service-tag">🛏️ Bettwäsche</span>' : ''}
                             <span class="service-tag">👥 ${task.guest_count} ${task.guest_count === 1 ? 'Gast' : 'Gäste'}</span>
+                            ${task.emojis_start ? `<span class="service-tag">📅 Vor Anreise: ${task.emojis_start}</span>` : ''}
+                            ${task.emojis_end ? `<span class="service-tag">🏁 Nach Abreise: ${task.emojis_end}</span>` : ''}
                         </div>
 
                         ${task.notes ? `<div class="notes">📝 ${task.notes}</div>` : ''}
@@ -952,9 +952,9 @@
                                     <div class="timeline-task-guest">${task.guest_name}</div>
                                     <div class="timeline-task-time">⏰ ${task.checkout_time}</div>
                                     <div class="timeline-task-icons">
-                                        ${task.has_dog ? '🐕' : ''}
-                                        ${task.needs_bedding ? '🛏️' : ''}
                                         ${task.guest_count ? '👥' + task.guest_count : ''}
+                                        ${task.emojis_start ? task.emojis_start : ''}
+                                        ${task.emojis_end ? task.emojis_end : ''}
                                         ${isCompleted ? '✅' : ''}
                                     </div>
                                 </div>
