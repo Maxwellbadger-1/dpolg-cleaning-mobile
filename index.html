@@ -388,6 +388,176 @@
             transform: scale(0.95);
         }
 
+        /* Toast Notification System */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--slate-800);
+            border: 2px solid var(--slate-700);
+            border-radius: 12px;
+            padding: 16px 20px;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: auto;
+            animation: slideIn 0.3s ease-out;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .toast.loading {
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .toast.success {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .toast.debug {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .toast-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .toast-message {
+            flex: 1;
+            color: white;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--slate-400);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .toast-close:hover {
+            background: var(--slate-700);
+            color: white;
+        }
+
+        /* Spinner Animation */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--slate-700);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Debug Panel */
+        .debug-panel {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            background: var(--slate-800);
+            border: 2px solid var(--warning);
+            border-radius: 12px;
+            padding: 16px;
+            max-width: 90%;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 9999;
+            font-size: 12px;
+            font-family: monospace;
+            color: var(--slate-300);
+            display: none;
+        }
+
+        .debug-panel.visible {
+            display: block;
+        }
+
+        .debug-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid var(--slate-700);
+        }
+
+        .debug-time {
+            color: var(--slate-500);
+            margin-right: 8px;
+        }
+
+        .debug-toggle {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--warning);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+
+        .debug-toggle:active {
+            transform: scale(0.95);
+        }
+
         /* Timeline View Styles */
         .timeline-container {
             overflow-x: auto;
@@ -592,6 +762,16 @@
     </div>
 
     <button class="refresh-btn" onclick="loadTasks()">🔄</button>
+    <button class="debug-toggle" onclick="toggleDebugPanel()">🐛</button>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Debug Panel -->
+    <div class="debug-panel" id="debug-panel">
+        <h3 style="color: var(--warning); margin-bottom: 12px;">🐛 Debug Log</h3>
+        <div id="debug-entries"></div>
+    </div>
 
     <script>
         // API Endpoint - Vercel Serverless Function
@@ -605,6 +785,124 @@
         let selectedLocation = 'all'; // Orte-Filter
         let minDate = null;
         let maxDate = null;
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🎨 TOAST NOTIFICATION SYSTEM
+        // ═══════════════════════════════════════════════════════════════
+
+        let toastIdCounter = 0;
+
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toast-container');
+            const toastId = `toast-${toastIdCounter++}`;
+
+            const icons = {
+                loading: '<div class="spinner"></div>',
+                success: '✅',
+                error: '❌',
+                debug: '🐛',
+                info: 'ℹ️'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.id = toastId;
+            toast.innerHTML = `
+                <div class="toast-icon">${icons[type] || icons.info}</div>
+                <div class="toast-message">${message}</div>
+                <button class="toast-close" onclick="closeToast('${toastId}')">✕</button>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto-dismiss (außer bei loading)
+            if (type !== 'loading' && duration > 0) {
+                setTimeout(() => closeToast(toastId), duration);
+            }
+
+            debugLog(`Toast [${type}]: ${message}`);
+
+            return toastId;
+        }
+
+        function closeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+
+        function updateToast(toastId, message, type, duration = 3000) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                const icons = {
+                    loading: '<div class="spinner"></div>',
+                    success: '✅',
+                    error: '❌',
+                    debug: '🐛',
+                    info: 'ℹ️'
+                };
+
+                toast.className = `toast ${type}`;
+                toast.querySelector('.toast-icon').innerHTML = icons[type];
+                toast.querySelector('.toast-message').textContent = message;
+
+                if (type !== 'loading' && duration > 0) {
+                    setTimeout(() => closeToast(toastId), duration);
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🐛 DEBUG PANEL SYSTEM
+        // ═══════════════════════════════════════════════════════════════
+
+        function debugLog(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            });
+
+            // Console log with emoji prefix
+            if (data) {
+                console.log(`🐛 [${timestamp}] ${message}`, data);
+            } else {
+                console.log(`🐛 [${timestamp}] ${message}`);
+            }
+
+            // Add to debug panel
+            const panel = document.getElementById('debug-entries');
+            if (panel) {
+                const entry = document.createElement('div');
+                entry.className = 'debug-entry';
+                entry.innerHTML = `
+                    <span class="debug-time">${timestamp}</span>
+                    <span>${message}</span>
+                    ${data ? `<pre style="margin-top: 4px; color: var(--slate-400);">${JSON.stringify(data, null, 2)}</pre>` : ''}
+                `;
+                panel.insertBefore(entry, panel.firstChild);
+
+                // Limit entries to 50
+                while (panel.children.length > 50) {
+                    panel.removeChild(panel.lastChild);
+                }
+            }
+        }
+
+        function toggleDebugPanel() {
+            const panel = document.getElementById('debug-panel');
+            panel.classList.toggle('visible');
+        }
+
+        function clearDebugLog() {
+            const panel = document.getElementById('debug-entries');
+            if (panel) {
+                panel.innerHTML = '';
+            }
+        }
 
         // Datum formatieren
         function formatDate(dateStr) {
@@ -734,52 +1032,105 @@
             }
         }
 
-        // Tasks von API laden
+        // ═══════════════════════════════════════════════════════════════
+        // 📥 LOAD TASKS FROM API (WITH MASSIVE DEBUG LOGGING)
+        // ═══════════════════════════════════════════════════════════════
         async function loadTasks() {
+            debugLog('═══════════════════════════════════════════════════════');
+            debugLog('📥 LOAD TASKS STARTED');
+            debugLog('═══════════════════════════════════════════════════════');
+
             try {
-                console.log('🔄 Loading tasks from API...');
+                debugLog('🔄 Preparing fetch request...');
+                debugLog('API URL:', { url: API_URL });
+
+                const requestBody = { action: 'getTasks' };
+                debugLog('Request body:', requestBody);
+
+                debugLog('🌐 Sending fetch request...');
+                const fetchStartTime = performance.now();
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        action: 'getTasks'
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
-                console.log('✅ Response received:', response.status);
+                const fetchEndTime = performance.now();
+                const fetchDuration = (fetchEndTime - fetchStartTime).toFixed(2);
+
+                debugLog(`✅ Fetch completed in ${fetchDuration}ms`);
+                debugLog('Response status:', { status: response.status, statusText: response.statusText });
+
+                debugLog('📦 Parsing JSON response...');
                 const data = await response.json();
-                console.log('📦 Data:', JSON.stringify(data, null, 2));
+
+                debugLog('Raw response data structure check:');
+                debugLog('  - Has results?', !!data.results);
+                debugLog('  - Results length:', data.results?.length);
+                debugLog('  - First result exists?', !!data.results?.[0]);
+                debugLog('  - Has response property?', !!data.results?.[0]?.response);
+                debugLog('  - Has result property?', !!data.results?.[0]?.response?.result);
 
                 if (data.results && data.results[0] && data.results[0].response && data.results[0].response.result) {
                     const rows = data.results[0].response.result.rows;
                     const columns = data.results[0].response.result.cols;
 
-                    console.log(`📊 Found ${rows.length} tasks`);
+                    debugLog(`📊 Found ${rows.length} tasks`);
+                    debugLog('Column names:', columns.map(c => c.name));
+
+                    debugLog('🔄 Converting Turso v2 format to objects...');
+                    const oldTaskCount = allTasks.length;
 
                     // Konvertiere Turso v2 Format zu Objekten
-                    // Rows sind Arrays von {type, value} Objekten
-                    allTasks = rows.map(row => {
+                    allTasks = rows.map((row, rowIdx) => {
                         const task = {};
                         columns.forEach((col, idx) => {
                             const cell = row[idx];
-                            // Extrahiere den Wert aus {type, value}
                             task[col.name] = cell.type === 'null' ? null : cell.value;
                         });
+
+                        // Log first task for debugging
+                        if (rowIdx === 0) {
+                            debugLog('📝 Sample task (first):', task);
+                        }
+
                         return task;
                     });
 
-                    console.log('✅ Tasks loaded:', allTasks.length);
+                    debugLog(`✅ Tasks converted: ${oldTaskCount} → ${allTasks.length}`);
+                    debugLog(`📊 Task status breakdown:`);
+
+                    // Count task statuses
+                    const statusCounts = {};
+                    allTasks.forEach(task => {
+                        statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
+                    });
+                    debugLog('  Status counts:', statusCounts);
+
+                    debugLog('🔧 Initializing date picker...');
                     initializeDatePicker();
-                    generateLocationFilter(); // Orte-Filter generieren
+
+                    debugLog('🔧 Generating location filter...');
+                    generateLocationFilter();
+
+                    debugLog('🎨 Calling displayTasks()...');
                     displayTasks();
+
+                    debugLog('═══════════════════════════════════════════════════════');
+                    debugLog('✅ LOAD TASKS COMPLETED SUCCESSFULLY');
+                    debugLog('═══════════════════════════════════════════════════════');
                 } else {
-                    console.error('❌ No data in response:', data);
+                    debugLog('❌ Invalid response structure!', { data });
                     showError('Keine Daten erhalten');
                 }
             } catch (error) {
-                console.error('❌ Error loading tasks:', error);
+                debugLog('❌❌❌ FATAL ERROR IN LOAD TASKS ❌❌❌');
+                debugLog('Error name:', error.name);
+                debugLog('Error message:', error.message);
+                debugLog('Error stack:', error.stack);
                 showError('Fehler beim Laden: ' + error.message);
             }
         }
@@ -1061,36 +1412,144 @@
             content.innerHTML = monthSelectorHTML + html;
         }
 
-        // Task Status updaten
+        // ═══════════════════════════════════════════════════════════════
+        // 🔄 TOGGLE TASK STATUS (WITH MASSIVE DEBUG LOGGING)
+        // ═══════════════════════════════════════════════════════════════
         async function toggleTask(taskId, newStatus) {
+            debugLog('═══════════════════════════════════════════════════════');
+            debugLog('🔄 TOGGLE TASK STARTED');
+            debugLog('═══════════════════════════════════════════════════════');
+
+            // Show loading toast
+            const toastId = showToast(
+                `Aufgabe wird ${newStatus === 'done' ? 'als erledigt markiert' : 'reaktiviert'}...`,
+                'loading',
+                0
+            );
+
             try {
-                console.log(`🔄 Toggling task ${taskId} to status: ${newStatus}`);
+                debugLog('Input parameters:', { taskId, newStatus });
+
+                // Find task in current data
+                const task = allTasks.find(t => t.id === taskId);
+                if (task) {
+                    debugLog('📝 Current task data:', {
+                        id: task.id,
+                        room: task.room_name,
+                        guest: task.guest_name,
+                        currentStatus: task.status
+                    });
+                } else {
+                    debugLog('⚠️ Task not found in allTasks array!');
+                }
+
+                debugLog('🔄 Preparing fetch request...');
+                const requestBody = {
+                    action: 'toggleTask',
+                    taskId: taskId,
+                    newStatus: newStatus
+                };
+                debugLog('Request body:', requestBody);
+
+                debugLog('🌐 Sending fetch request...');
+                const fetchStartTime = performance.now();
 
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        action: 'toggleTask',
-                        taskId: taskId,
-                        newStatus: newStatus
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
-                console.log('✅ Response status:', response.status);
+                const fetchEndTime = performance.now();
+                const fetchDuration = (fetchEndTime - fetchStartTime).toFixed(2);
+
+                debugLog(`✅ Fetch completed in ${fetchDuration}ms`);
+                debugLog('Response status:', { status: response.status, statusText: response.statusText });
+
+                debugLog('📦 Parsing JSON response...');
                 const data = await response.json();
-                console.log('📦 Response data:', JSON.stringify(data, null, 2));
+
+                debugLog('Response data structure check:');
+                debugLog('  - Has results?', !!data.results);
+                debugLog('  - Results length:', data.results?.length);
 
                 if (response.ok) {
-                    console.log('✅ Task updated successfully');
-                    await loadTasks(); // Neu laden
+                    debugLog('✅ Toggle request successful!');
+                    debugLog('Response data:', data);
+
+                    // Update toast to success
+                    updateToast(
+                        toastId,
+                        `Aufgabe ${newStatus === 'done' ? 'erledigt' : 'reaktiviert'}! ✓`,
+                        'success',
+                        2000
+                    );
+
+                    debugLog('🔄 Calling loadTasks() to refresh UI...');
+                    const loadStartTime = performance.now();
+
+                    await loadTasks();
+
+                    const loadEndTime = performance.now();
+                    const loadDuration = (loadEndTime - loadStartTime).toFixed(2);
+
+                    debugLog(`✅ loadTasks() completed in ${loadDuration}ms`);
+
+                    // Check if task was actually updated in allTasks
+                    const updatedTask = allTasks.find(t => t.id === taskId);
+                    if (updatedTask) {
+                        debugLog('📝 Updated task data:', {
+                            id: updatedTask.id,
+                            room: updatedTask.room_name,
+                            guest: updatedTask.guest_name,
+                            newStatus: updatedTask.status,
+                            expectedStatus: newStatus
+                        });
+
+                        if (updatedTask.status === newStatus) {
+                            debugLog('✅✅✅ STATUS UPDATE VERIFIED! ✅✅✅');
+                            showToast('UI erfolgreich aktualisiert!', 'success', 2000);
+                        } else {
+                            debugLog('❌❌❌ STATUS MISMATCH! ❌❌❌');
+                            debugLog(`Expected: ${newStatus}, Got: ${updatedTask.status}`);
+                            showToast('⚠️ Status-Mismatch! Siehe Debug Log', 'error', 5000);
+                        }
+                    } else {
+                        debugLog('⚠️⚠️⚠️ TASK NOT FOUND AFTER RELOAD! ⚠️⚠️⚠️');
+                        showToast('⚠️ Task nicht gefunden nach Reload!', 'error', 5000);
+                    }
+
+                    debugLog('═══════════════════════════════════════════════════════');
+                    debugLog('✅ TOGGLE TASK COMPLETED SUCCESSFULLY');
+                    debugLog('═══════════════════════════════════════════════════════');
                 } else {
-                    console.error('❌ Update failed:', data);
+                    debugLog('❌ Toggle request failed!');
+                    debugLog('Error response:', data);
+
+                    updateToast(
+                        toastId,
+                        'Fehler beim Aktualisieren: ' + (data.error || response.statusText),
+                        'error',
+                        5000
+                    );
+
                     showError('Fehler beim Aktualisieren: ' + (data.error || response.statusText));
                 }
             } catch (error) {
-                console.error('❌ Error in toggleTask:', error);
+                debugLog('❌❌❌ FATAL ERROR IN TOGGLE TASK ❌❌❌');
+                debugLog('Error name:', error.name);
+                debugLog('Error message:', error.message);
+                debugLog('Error stack:', error.stack);
+
+                updateToast(
+                    toastId,
+                    'Fehler: ' + error.message,
+                    'error',
+                    5000
+                );
+
                 showError('Fehler: ' + error.message);
             }
         }
