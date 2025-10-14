@@ -94,6 +94,49 @@
             transform: scale(0.98);
         }
 
+        .location-filter {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+        }
+
+        .location-filter::-webkit-scrollbar {
+            display: none;
+        }
+
+        .location-btn {
+            background: var(--slate-800);
+            border: 1px solid var(--slate-700);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--slate-300);
+        }
+
+        .location-btn:active {
+            transform: scale(0.98);
+        }
+
+        .location-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .room-location {
+            color: var(--slate-400);
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
         .date-picker-wrapper {
             background: var(--slate-800);
             border: 1px solid var(--slate-700);
@@ -522,6 +565,8 @@
         <div class="date" id="current-date"></div>
     </div>
 
+    <div class="location-filter" id="location-filter"></div>
+
     <div id="date-picker-container" class="date-picker-wrapper" style="display: none;">
         <label for="datePicker">Datum auswählen:</label>
         <input
@@ -549,6 +594,7 @@
         let currentView = 'list';
         let selectedMonth = new Date().getMonth(); // 0-11
         let selectedYear = new Date().getFullYear();
+        let selectedLocation = 'all'; // Orte-Filter
         let minDate = null;
         let maxDate = null;
 
@@ -582,6 +628,31 @@
                 tab.onclick = () => selectDate(dateStr, tab);
                 tabsContainer.appendChild(tab);
             }
+        }
+
+        // Orte-Filter generieren
+        function generateLocationFilter() {
+            const filterContainer = document.getElementById('location-filter');
+
+            // Extrahiere einzigartige Orte aus allTasks
+            const locations = [...new Set(allTasks.map(task => task.room_location).filter(loc => loc))];
+            locations.sort();
+
+            // Filter HTML bauen
+            let html = `<button class="location-btn ${selectedLocation === 'all' ? 'active' : ''}" onclick="selectLocation('all')">📍 Alle Orte</button>`;
+
+            locations.forEach(location => {
+                const icon = location === 'Fall' ? '🏔️' : location === 'Langenprozelten' ? '🏡' : '📍';
+                html += `<button class="location-btn ${selectedLocation === location ? 'active' : ''}" onclick="selectLocation('${location}')">${icon} ${location}</button>`;
+            });
+
+            filterContainer.innerHTML = html;
+        }
+
+        function selectLocation(location) {
+            selectedLocation = location;
+            generateLocationFilter(); // Filter UI updaten
+            displayTasks(); // Tasks neu anzeigen
         }
 
         function selectDate(date, tabElement) {
@@ -705,6 +776,7 @@
 
                     console.log('✅ Tasks loaded:', allTasks.length);
                     initializeDatePicker();
+                    generateLocationFilter(); // Orte-Filter generieren
                     displayTasks();
                 } else {
                     console.error('❌ No data in response:', data);
@@ -754,7 +826,12 @@
         // Listen-Ansicht
         function displayListView() {
             const content = document.getElementById('content');
-            const todayTasks = allTasks.filter(task => task.date === currentDate);
+
+            // Filter Tasks: Datum + Ort
+            let todayTasks = allTasks.filter(task => task.date === currentDate);
+            if (selectedLocation !== 'all') {
+                todayTasks = todayTasks.filter(task => task.room_location === selectedLocation);
+            }
 
             if (todayTasks.length === 0) {
                 content.innerHTML = `
@@ -773,7 +850,10 @@
                 return `
                     <div class="task-card priority-${task.priority}">
                         <div class="task-header">
-                            <div class="room-name">${task.room_name}</div>
+                            <div>
+                                <div class="room-name">${task.room_name}</div>
+                                ${task.room_location ? `<div class="room-location">📍 ${task.room_location}</div>` : ''}
+                            </div>
                             ${task.priority === 'high' ? '<span class="priority-badge priority-high">⚠️ HIGH</span>' : ''}
                         </div>
 
@@ -848,9 +928,15 @@
             }
             monthSelectorHTML += '</div>';
 
+            // Filter Tasks nach Ort (vor Gruppierung)
+            let filteredTasks = allTasks;
+            if (selectedLocation !== 'all') {
+                filteredTasks = allTasks.filter(task => task.room_location === selectedLocation);
+            }
+
             // Gruppiere Tasks nach Zimmer und expandiere Buchungen über mehrere Tage
             const roomTasks = {};
-            allTasks.forEach(task => {
+            filteredTasks.forEach(task => {
                 if (!roomTasks[task.room_name]) {
                     roomTasks[task.room_name] = {};
                 }
