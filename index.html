@@ -736,15 +736,27 @@
             // Total Tasks
             document.getElementById('debug-total').textContent = allTasks.length;
 
-            // Extrahiere unique Locations (camelCase wegen Tauri Konvertierung!)
-            const locations = [...new Set(allTasks.map(task => task.roomLocation).filter(loc => loc))];
+            // 🔥 DEBUG: Zeige ALLE Keys des ersten Tasks 🔥
+            if (allTasks.length > 0) {
+                const firstTask = allTasks[0];
+                console.log('🔥🔥🔥 FIRST TASK COMPLETE OBJECT:', firstTask);
+                console.log('🔥🔥🔥 AVAILABLE KEYS:', Object.keys(firstTask));
+                console.log('🔥🔥🔥 Checking location fields:');
+                console.log('  - task.room_location (snake_case):', firstTask.room_location);
+                console.log('  - task.roomLocation (camelCase):', firstTask.roomLocation);
+                console.log('  - task.location:', firstTask.location);
+                console.log('  - task.ort:', firstTask.ort);
+            }
+
+            // Extrahiere unique Locations (SNAKE_CASE für Turso DB!)
+            const locations = [...new Set(allTasks.map(task => task.room_location).filter(loc => loc))];
             locations.sort();
             console.log('🔥 [DEBUG] Unique locations found:', locations);
 
-            // Locations List
+            // Locations List mit MEHR Info
             const locationsText = locations.length > 0
-                ? locations.map(loc => `📍 ${loc} (${allTasks.filter(t => t.roomLocation === loc).length} tasks)`).join('<br>')
-                : '❌ NO LOCATIONS FOUND IN DATA!';
+                ? locations.map(loc => `📍 ${loc} (${allTasks.filter(t => t.room_location === loc).length} tasks)`).join('<br>')
+                : `❌ NO LOCATIONS FOUND!<br><br>First task keys: ${allTasks.length > 0 ? Object.keys(allTasks[0]).join(', ') : 'NO TASKS'}`;
             document.getElementById('debug-locations-list').innerHTML = locationsText;
 
             // Selected Location
@@ -759,7 +771,8 @@
                 totalTasks: allTasks.length,
                 uniqueLocations: locations.length,
                 locationsList: locations,
-                selectedLocation: selectedLocation
+                selectedLocation: selectedLocation,
+                firstTaskKeys: allTasks.length > 0 ? Object.keys(allTasks[0]) : []
             });
         }
 
@@ -767,11 +780,13 @@
         function generateLocationFilter() {
             const filterContainer = document.getElementById('location-filter');
 
-            // Extrahiere einzigartige Orte aus allTasks (camelCase wegen Tauri Konvertierung!)
-            const locations = [...new Set(allTasks.map(task => task.roomLocation).filter(loc => loc))];
+            // Extrahiere einzigartige Orte aus allTasks (SNAKE_CASE für Turso DB!)
+            const locations = [...new Set(allTasks.map(task => task.room_location).filter(loc => loc))];
             locations.sort();
 
             console.log('📍 [generateLocationFilter] Locations found:', locations);
+            console.log('📍 [generateLocationFilter] Total tasks:', allTasks.length);
+            console.log('📍 [generateLocationFilter] Sample task:', allTasks[0]);
 
             // Filter HTML bauen
             let html = `<button class="location-btn ${selectedLocation === 'all' ? 'active' : ''}" onclick="selectLocation('all')">📍 Alle Orte</button>`;
@@ -965,10 +980,10 @@
         function displayListView() {
             const content = document.getElementById('content');
 
-            // Filter Tasks: Datum + Ort (camelCase wegen Tauri Konvertierung!)
+            // Filter Tasks: Datum + Ort (SNAKE_CASE für Turso DB!)
             let todayTasks = allTasks.filter(task => task.date === currentDate);
             if (selectedLocation !== 'all') {
-                todayTasks = todayTasks.filter(task => task.roomLocation === selectedLocation);
+                todayTasks = todayTasks.filter(task => task.room_location === selectedLocation);
             }
 
             // 🔥 DEBUG: Update filtered count 🔥
@@ -994,7 +1009,7 @@
                         <div class="task-header">
                             <div>
                                 <div class="room-name">${task.room_name}</div>
-                                ${task.roomLocation ? `<div class="room-location">📍 ${task.roomLocation}</div>` : ''}
+                                ${task.room_location ? `<div class="room-location">📍 ${task.room_location}</div>` : ''}
                             </div>
                             ${task.priority === 'high' ? '<span class="priority-badge priority-high">⚠️ HIGH</span>' : ''}
                         </div>
@@ -1072,10 +1087,10 @@
             }
             monthSelectorHTML += '</div>';
 
-            // Filter Tasks nach Ort (vor Gruppierung) (camelCase wegen Tauri Konvertierung!)
+            // Filter Tasks nach Ort (vor Gruppierung) (SNAKE_CASE für Turso DB!)
             let filteredTasks = allTasks;
             if (selectedLocation !== 'all') {
-                filteredTasks = allTasks.filter(task => task.roomLocation === selectedLocation);
+                filteredTasks = allTasks.filter(task => task.room_location === selectedLocation);
             }
 
             // 🔥 DEBUG: Update filtered count 🔥
