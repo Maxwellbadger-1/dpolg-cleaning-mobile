@@ -594,8 +594,9 @@
     <button class="refresh-btn" onclick="loadTasks()">🔄</button>
 
     <script>
-        // API Endpoint - Vercel Serverless Function (löst CORS + versteckt Token)
-        const API_URL = '/api/tasks';
+        // Turso Database Connection
+        const TURSO_URL = 'https://dpolg-cleaning-maxwellbadger-1.aws-eu-west-1.turso.io';
+        const TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTk4NDI1MzcsImlkIjoiZjY1ZWY2YzMtYWNhMS00NjZiLWExYjgtODU0MTlmYjlmNDNiIiwicmlkIjoiMTRjNDc4YjAtYTAwMy00ZmZmLThiYTUtYTZhOWIwYjZiODdmIn0.JSyu72rlp3pQ_vFxozglKoV-XMHW12j_hVfhTKjbEGwSyWnWBq2kziJNx2WwvvwD09NU-TMoLLszq2Mm9OlLDw';
 
         let currentDate = new Date().toISOString().split('T')[0];
         let allTasks = [];
@@ -734,17 +735,28 @@
             }
         }
 
-        // Tasks von API laden (via Vercel Serverless Function)
+        // Tasks von Turso laden
         async function loadTasks() {
             try {
-                console.log('🔄 Loading tasks via API...');
-                const response = await fetch(API_URL, {
+                console.log('🔄 Loading tasks from Turso...');
+                const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
                     method: 'POST',
                     headers: {
+                        'Authorization': `Bearer ${TURSO_TOKEN}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        action: 'getTasks'
+                        requests: [
+                            {
+                                type: "execute",
+                                stmt: {
+                                    sql: "SELECT * FROM cleaning_tasks ORDER BY priority DESC, room_name ASC"
+                                }
+                            },
+                            {
+                                type: "close"
+                            }
+                        ]
                     })
                 });
 
@@ -1061,20 +1073,36 @@
             content.innerHTML = monthSelectorHTML + html;
         }
 
-        // Task Status updaten (via API)
+        // Task Status updaten
         async function toggleTask(taskId, newStatus) {
             try {
                 console.log(`🔄 Toggling task ${taskId} to status: ${newStatus}`);
 
-                const response = await fetch(API_URL, {
+                const completedAt = newStatus === 'done' ? new Date().toISOString() : null;
+
+                const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
                     method: 'POST',
                     headers: {
+                        'Authorization': `Bearer ${TURSO_TOKEN}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        action: 'toggleTask',
-                        taskId: taskId,
-                        newStatus: newStatus
+                        requests: [
+                            {
+                                type: "execute",
+                                stmt: {
+                                    sql: "UPDATE cleaning_tasks SET status = ?, completed_at = ? WHERE id = ?",
+                                    args: [
+                                        { type: "text", value: newStatus },
+                                        { type: completedAt ? "text" : "null", value: completedAt },
+                                        { type: "integer", value: taskId }
+                                    ]
+                                }
+                            },
+                            {
+                                type: "close"
+                            }
+                        ]
                     })
                 });
 
