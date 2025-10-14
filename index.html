@@ -1446,10 +1446,18 @@
                 debugLog(`💾 Backup: oldStatus="${oldStatus}"`);
 
                 // 2️⃣ INSTANT UI UPDATE - Save scroll position first!
+                // Finde das richtig scrollende Element (List-View vs Timeline-View)
                 const content = document.getElementById('content');
-                const scrollTop = content ? content.scrollTop : 0;
-                const scrollLeft = content ? content.scrollLeft : 0;
-                debugLog(`📍 Saved scroll position: top=${scrollTop}, left=${scrollLeft}`);
+                const timelineContainer = document.querySelector('.timeline-container');
+
+                // In Timeline-View scrollt .timeline-container, in List-View scrollt #content
+                const scrollingElement = timelineContainer || content;
+
+                const scrollTop = scrollingElement ? scrollingElement.scrollTop : 0;
+                const scrollLeft = scrollingElement ? scrollingElement.scrollLeft : 0;
+                debugLog(`📍 Saved scroll position from ${timelineContainer ? 'timeline-container' : 'content'}:`);
+                debugLog(`   - scrollTop: ${scrollTop}`);
+                debugLog(`   - scrollLeft: ${scrollLeft}`);
 
                 // Update task status immediately (optimistic)
                 allTasks[taskIndex].status = newStatus;
@@ -1461,11 +1469,19 @@
                 const uiDuration = (performance.now() - uiStartTime).toFixed(2);
                 debugLog(`✅ UI updated in ${uiDuration}ms`);
 
-                // Restore scroll position
-                if (content) {
-                    content.scrollTop = scrollTop;
-                    content.scrollLeft = scrollLeft;
-                    debugLog(`📍 Restored scroll position: top=${scrollTop}, left=${scrollLeft}`);
+                // Restore scroll position - WICHTIG: Nach displayTasks() neu queryen!
+                const newTimelineContainer = document.querySelector('.timeline-container');
+                const newScrollingElement = newTimelineContainer || content;
+
+                if (newScrollingElement) {
+                    // WICHTIG: requestAnimationFrame damit DOM-Update fertig ist
+                    requestAnimationFrame(() => {
+                        newScrollingElement.scrollTop = scrollTop;
+                        newScrollingElement.scrollLeft = scrollLeft;
+                        debugLog(`📍 Restored scroll position to ${newTimelineContainer ? 'timeline-container' : 'content'}:`);
+                        debugLog(`   - scrollTop: ${newScrollingElement.scrollTop}`);
+                        debugLog(`   - scrollLeft: ${newScrollingElement.scrollLeft}`);
+                    });
                 }
 
                 // Show instant feedback (no loading toast needed!)
@@ -1518,17 +1534,25 @@
                     allTasks[taskIndex].status = oldStatus;
                     debugLog(`↩️ ROLLBACK: status="${newStatus}" → "${oldStatus}"`);
 
-                    // Restore scroll position
-                    const scrollTop = content ? content.scrollTop : 0;
-                    const scrollLeft = content ? content.scrollLeft : 0;
+                    // Save scroll position before rollback
+                    const rollbackTimelineContainer = document.querySelector('.timeline-container');
+                    const rollbackScrollingElement = rollbackTimelineContainer || content;
+                    const rollbackScrollTop = rollbackScrollingElement ? rollbackScrollingElement.scrollTop : 0;
+                    const rollbackScrollLeft = rollbackScrollingElement ? rollbackScrollingElement.scrollLeft : 0;
 
                     // Redraw UI with rolled-back state
                     displayTasks();
 
-                    // Restore scroll position again
-                    if (content) {
-                        content.scrollTop = scrollTop;
-                        content.scrollLeft = scrollLeft;
+                    // Restore scroll position after rollback
+                    const newRollbackTimelineContainer = document.querySelector('.timeline-container');
+                    const newRollbackScrollingElement = newRollbackTimelineContainer || content;
+
+                    if (newRollbackScrollingElement) {
+                        requestAnimationFrame(() => {
+                            newRollbackScrollingElement.scrollTop = rollbackScrollTop;
+                            newRollbackScrollingElement.scrollLeft = rollbackScrollLeft;
+                            debugLog(`📍 Rollback: Restored scroll position`);
+                        });
                     }
 
                     // Show error toast
@@ -1549,22 +1573,32 @@
                 debugLog('Error:', error);
 
                 // Rollback to old status
-                const taskIndex = allTasks.findIndex(t => String(t.id) === String(taskId));
-                if (taskIndex >= 0) {
-                    const oldStatus = allTasks[taskIndex].status === 'done' ? 'pending' : 'done'; // Reverse
-                    allTasks[taskIndex].status = oldStatus;
-                    debugLog(`↩️ ROLLBACK to oldStatus="${oldStatus}"`);
+                const errorTaskIndex = allTasks.findIndex(t => String(t.id) === String(taskId));
+                if (errorTaskIndex >= 0) {
+                    const errorOldStatus = allTasks[errorTaskIndex].status === 'done' ? 'pending' : 'done'; // Reverse
+                    allTasks[errorTaskIndex].status = errorOldStatus;
+                    debugLog(`↩️ ROLLBACK to oldStatus="${errorOldStatus}"`);
 
-                    // Restore scroll & redraw
+                    // Save scroll position before rollback
                     const content = document.getElementById('content');
-                    const scrollTop = content ? content.scrollTop : 0;
-                    const scrollLeft = content ? content.scrollLeft : 0;
+                    const errorTimelineContainer = document.querySelector('.timeline-container');
+                    const errorScrollingElement = errorTimelineContainer || content;
+                    const errorScrollTop = errorScrollingElement ? errorScrollingElement.scrollTop : 0;
+                    const errorScrollLeft = errorScrollingElement ? errorScrollingElement.scrollLeft : 0;
 
+                    // Redraw UI
                     displayTasks();
 
-                    if (content) {
-                        content.scrollTop = scrollTop;
-                        content.scrollLeft = scrollLeft;
+                    // Restore scroll position
+                    const newErrorTimelineContainer = document.querySelector('.timeline-container');
+                    const newErrorScrollingElement = newErrorTimelineContainer || content;
+
+                    if (newErrorScrollingElement) {
+                        requestAnimationFrame(() => {
+                            newErrorScrollingElement.scrollTop = errorScrollTop;
+                            newErrorScrollingElement.scrollLeft = errorScrollLeft;
+                            debugLog(`📍 Exception Rollback: Restored scroll position`);
+                        });
                     }
                 }
 
