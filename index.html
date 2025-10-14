@@ -1076,6 +1076,10 @@
         // Task Status updaten
         async function toggleTask(taskId, newStatus) {
             try {
+                console.log(`🔄 Toggling task ${taskId} to status: ${newStatus}`);
+
+                const completedAt = newStatus === 'done' ? new Date().toISOString() : null;
+
                 const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
                     method: 'POST',
                     headers: {
@@ -1087,23 +1091,34 @@
                             {
                                 type: "execute",
                                 stmt: {
-                                    sql: `UPDATE cleaning_tasks SET status = '${newStatus}', completed_at = ${newStatus === 'done' ? "datetime('now')" : 'NULL'} WHERE id = ${taskId}`
+                                    sql: "UPDATE cleaning_tasks SET status = ?, completed_at = ? WHERE id = ?",
+                                    args: [
+                                        { type: "text", value: newStatus },
+                                        { type: completedAt ? "text" : "null", value: completedAt },
+                                        { type: "integer", value: taskId }
+                                    ]
                                 }
                             },
                             {
-                                type: "close",
-                                stmt: { sql: "" }
+                                type: "close"
                             }
                         ]
                     })
                 });
 
+                console.log('✅ Response status:', response.status);
+                const data = await response.json();
+                console.log('📦 Response data:', JSON.stringify(data, null, 2));
+
                 if (response.ok) {
+                    console.log('✅ Task updated successfully');
                     await loadTasks(); // Neu laden
                 } else {
-                    showError('Fehler beim Aktualisieren');
+                    console.error('❌ Update failed:', data);
+                    showError('Fehler beim Aktualisieren: ' + (data.error || response.statusText));
                 }
             } catch (error) {
+                console.error('❌ Error in toggleTask:', error);
                 showError('Fehler: ' + error.message);
             }
         }
