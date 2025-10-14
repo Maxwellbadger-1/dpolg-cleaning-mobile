@@ -137,6 +137,78 @@
             margin-top: 4px;
         }
 
+        /* DEBUG PANEL - MASSIV SICHTBAR */
+        .debug-panel {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            border: 3px solid #fbbf24;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 30px rgba(220, 38, 38, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 8px 30px rgba(220, 38, 38, 0.6); }
+            50% { box-shadow: 0 8px 40px rgba(220, 38, 38, 0.9); }
+        }
+
+        .debug-panel h2 {
+            color: #fbbf24;
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .debug-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .debug-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(251, 191, 36, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .debug-label {
+            color: #fbbf24;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .debug-value {
+            color: white;
+            font-size: 18px;
+            font-weight: 800;
+            font-family: monospace;
+        }
+
+        .debug-locations {
+            grid-column: 1 / -1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(251, 191, 36, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .debug-locations-list {
+            color: white;
+            font-size: 14px;
+            font-family: monospace;
+            font-weight: 600;
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+
         .date-picker-wrapper {
             background: var(--slate-800);
             border: 1px solid var(--slate-700);
@@ -565,6 +637,33 @@
         <div class="date" id="current-date"></div>
     </div>
 
+    <!-- 🔥 MASSIV SICHTBARES DEBUG PANEL 🔥 -->
+    <div class="debug-panel" id="debug-panel">
+        <h2>🔍 DEBUG INFO - LOCATION FILTER STATUS</h2>
+        <div class="debug-grid">
+            <div class="debug-item">
+                <div class="debug-label">Total Tasks</div>
+                <div class="debug-value" id="debug-total">0</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-label">Filtered Tasks</div>
+                <div class="debug-value" id="debug-filtered">0</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-label">Selected Location</div>
+                <div class="debug-value" id="debug-location">-</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-label">Last Sync</div>
+                <div class="debug-value" id="debug-sync">-</div>
+            </div>
+            <div class="debug-locations">
+                <div class="debug-label">Unique Locations Found</div>
+                <div class="debug-locations-list" id="debug-locations-list">Loading...</div>
+            </div>
+        </div>
+    </div>
+
     <div class="location-filter" id="location-filter"></div>
 
     <div id="date-picker-container" class="date-picker-wrapper" style="display: none;">
@@ -630,6 +729,40 @@
             }
         }
 
+        // 🔥 DEBUG PANEL UPDATE 🔥
+        function updateDebugPanel() {
+            console.log('🔥 [DEBUG] updateDebugPanel called');
+
+            // Total Tasks
+            document.getElementById('debug-total').textContent = allTasks.length;
+
+            // Extrahiere unique Locations
+            const locations = [...new Set(allTasks.map(task => task.room_location).filter(loc => loc))];
+            locations.sort();
+            console.log('🔥 [DEBUG] Unique locations found:', locations);
+
+            // Locations List
+            const locationsText = locations.length > 0
+                ? locations.map(loc => `📍 ${loc} (${allTasks.filter(t => t.room_location === loc).length} tasks)`).join('<br>')
+                : '❌ NO LOCATIONS FOUND IN DATA!';
+            document.getElementById('debug-locations-list').innerHTML = locationsText;
+
+            // Selected Location
+            document.getElementById('debug-location').textContent = selectedLocation.toUpperCase();
+
+            // Filtered Tasks Count (wird in displayTasks aufgerufen)
+            // Last Sync
+            const now = new Date();
+            document.getElementById('debug-sync').textContent = now.toLocaleTimeString('de-DE');
+
+            console.log('🔥 [DEBUG] Panel updated:', {
+                totalTasks: allTasks.length,
+                uniqueLocations: locations.length,
+                locationsList: locations,
+                selectedLocation: selectedLocation
+            });
+        }
+
         // Orte-Filter generieren
         function generateLocationFilter() {
             const filterContainer = document.getElementById('location-filter');
@@ -637,6 +770,8 @@
             // Extrahiere einzigartige Orte aus allTasks
             const locations = [...new Set(allTasks.map(task => task.room_location).filter(loc => loc))];
             locations.sort();
+
+            console.log('📍 [generateLocationFilter] Locations found:', locations);
 
             // Filter HTML bauen
             let html = `<button class="location-btn ${selectedLocation === 'all' ? 'active' : ''}" onclick="selectLocation('all')">📍 Alle Orte</button>`;
@@ -647,6 +782,9 @@
             });
 
             filterContainer.innerHTML = html;
+
+            // 🔥 DEBUG UPDATE 🔥
+            updateDebugPanel();
         }
 
         function selectLocation(location) {
@@ -833,6 +971,10 @@
                 todayTasks = todayTasks.filter(task => task.room_location === selectedLocation);
             }
 
+            // 🔥 DEBUG: Update filtered count 🔥
+            document.getElementById('debug-filtered').textContent = todayTasks.length;
+            console.log('📋 [displayListView] Filtered tasks:', todayTasks.length, '/', allTasks.length);
+
             if (todayTasks.length === 0) {
                 content.innerHTML = `
                     <div class="empty-state">
@@ -894,6 +1036,8 @@
                         <div class="text">Keine Aufgaben für diese Woche</div>
                     </div>
                 `;
+                // 🔥 DEBUG 🔥
+                document.getElementById('debug-filtered').textContent = 0;
                 return;
             }
 
@@ -933,6 +1077,10 @@
             if (selectedLocation !== 'all') {
                 filteredTasks = allTasks.filter(task => task.room_location === selectedLocation);
             }
+
+            // 🔥 DEBUG: Update filtered count 🔥
+            document.getElementById('debug-filtered').textContent = filteredTasks.length;
+            console.log('📅 [displayTimelineView] Filtered tasks:', filteredTasks.length, '/', allTasks.length);
 
             // Gruppiere Tasks nach Zimmer und expandiere Buchungen über mehrere Tage
             const roomTasks = {};
