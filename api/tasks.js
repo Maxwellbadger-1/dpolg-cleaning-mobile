@@ -47,9 +47,9 @@ module.exports = async (req, res) => {
           stmt: {
             sql: "UPDATE cleaning_tasks SET status = ?, completed_at = ? WHERE id = ?",
             args: [
-              { type: "text", value: newStatus },
-              { type: completedAt ? "text" : "null", value: completedAt },
-              { type: "integer", value: taskId }
+              { type: "text", value: String(newStatus) },
+              completedAt ? { type: "text", value: String(completedAt) } : { type: "null" },
+              { type: "integer", value: String(taskId) }  // ← WICHTIG: value muss String sein!
             ]
           }
         },
