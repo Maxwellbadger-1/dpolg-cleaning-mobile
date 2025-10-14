@@ -38,17 +38,14 @@ module.exports = async (req, res) => {
         }
       ];
     } else if (action === 'toggleTask') {
-      // UPDATE task status
-      const completedAt = newStatus === 'done' ? new Date().toISOString() : null;
-
+      // UPDATE task status (nur status, ohne completed_at da Spalte nicht existiert)
       requests = [
         {
           type: "execute",
           stmt: {
-            sql: "UPDATE cleaning_tasks SET status = ?, completed_at = ? WHERE id = ?",
+            sql: "UPDATE cleaning_tasks SET status = ? WHERE id = ?",
             args: [
               { type: "text", value: String(newStatus) },
-              completedAt ? { type: "text", value: String(completedAt) } : { type: "null" },
               { type: "integer", value: String(taskId) }  // ← WICHTIG: value muss String sein!
             ]
           }
