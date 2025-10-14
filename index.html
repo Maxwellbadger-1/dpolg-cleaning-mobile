@@ -1413,45 +1413,70 @@
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // 🔄 TOGGLE TASK STATUS (WITH MASSIVE DEBUG LOGGING)
+        // 🔄 TOGGLE TASK STATUS (WITH OPTIMISTIC UI UPDATE)
         // ═══════════════════════════════════════════════════════════════
         async function toggleTask(taskId, newStatus) {
             debugLog('═══════════════════════════════════════════════════════');
-            debugLog('🔄 TOGGLE TASK STARTED');
+            debugLog('🔄 TOGGLE TASK STARTED (OPTIMISTIC UI)');
             debugLog('═══════════════════════════════════════════════════════');
-
-            // Show loading toast
-            const toastId = showToast(
-                `Aufgabe wird ${newStatus === 'done' ? 'als erledigt markiert' : 'reaktiviert'}...`,
-                'loading',
-                0
-            );
 
             try {
                 debugLog('Input parameters:', { taskId, newStatus });
 
-                // Find task in current data
-                const task = allTasks.find(t => t.id === taskId);
-                if (task) {
-                    debugLog('📝 Current task data:', {
-                        id: task.id,
-                        room: task.room_name,
-                        guest: task.guest_name,
-                        currentStatus: task.status
-                    });
-                } else {
+                // 1️⃣ OPTIMISTIC UPDATE - Find task and backup old state
+                const taskIdStr = String(taskId);
+                const taskIndex = allTasks.findIndex(t => String(t.id) === taskIdStr);
+                const task = taskIndex >= 0 ? allTasks[taskIndex] : null;
+
+                if (!task) {
                     debugLog('⚠️ Task not found in allTasks array!');
+                    showToast('⚠️ Task nicht gefunden', 'error', 3000);
+                    return;
                 }
 
-                debugLog('🔄 Preparing fetch request...');
-                const requestBody = {
-                    action: 'toggleTask',
-                    taskId: taskId,
-                    newStatus: newStatus
-                };
-                debugLog('Request body:', requestBody);
+                debugLog('📝 Current task data:', {
+                    id: task.id,
+                    room: task.room_name,
+                    guest: task.guest_name,
+                    currentStatus: task.status
+                });
 
-                debugLog('🌐 Sending fetch request...');
+                // Backup old status for rollback
+                const oldStatus = task.status;
+                debugLog(`💾 Backup: oldStatus="${oldStatus}"`);
+
+                // 2️⃣ INSTANT UI UPDATE - Save scroll position first!
+                const content = document.getElementById('content');
+                const scrollTop = content ? content.scrollTop : 0;
+                const scrollLeft = content ? content.scrollLeft : 0;
+                debugLog(`📍 Saved scroll position: top=${scrollTop}, left=${scrollLeft}`);
+
+                // Update task status immediately (optimistic)
+                allTasks[taskIndex].status = newStatus;
+                debugLog(`⚡ INSTANT UPDATE: status="${oldStatus}" → "${newStatus}"`);
+
+                // Redraw UI immediately (< 10ms)
+                const uiStartTime = performance.now();
+                displayTasks();
+                const uiDuration = (performance.now() - uiStartTime).toFixed(2);
+                debugLog(`✅ UI updated in ${uiDuration}ms`);
+
+                // Restore scroll position
+                if (content) {
+                    content.scrollTop = scrollTop;
+                    content.scrollLeft = scrollLeft;
+                    debugLog(`📍 Restored scroll position: top=${scrollTop}, left=${scrollLeft}`);
+                }
+
+                // Show instant feedback (no loading toast needed!)
+                showToast(
+                    `${newStatus === 'done' ? '✅ Erledigt!' : '↩️ Reaktiviert!'}`,
+                    'success',
+                    2000
+                );
+
+                // 3️⃣ BACKEND UPDATE (in background, no await for UI!)
+                debugLog('🌐 Sending background API request...');
                 const fetchStartTime = performance.now();
 
                 const response = await fetch(API_URL, {
@@ -1459,131 +1484,95 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(requestBody)
+                    body: JSON.stringify({
+                        action: 'toggleTask',
+                        taskId: taskId,
+                        newStatus: newStatus
+                    })
                 });
 
-                const fetchEndTime = performance.now();
-                const fetchDuration = (fetchEndTime - fetchStartTime).toFixed(2);
+                const fetchDuration = (performance.now() - fetchStartTime).toFixed(2);
+                debugLog(`✅ API response received in ${fetchDuration}ms`);
 
-                debugLog(`✅ Fetch completed in ${fetchDuration}ms`);
-                debugLog('Response status:', { status: response.status, statusText: response.statusText });
-
-                debugLog('📦 Parsing JSON response...');
                 const data = await response.json();
 
-                debugLog('Response data structure check:');
-                debugLog('  - Has results?', !!data.results);
-                debugLog('  - Results length:', data.results?.length);
+                // 4️⃣ VERIFY BACKEND SUCCESS
+                if (response.ok && data.results && data.results[0]) {
+                    const result = data.results[0].response?.result;
 
-                if (response.ok) {
-                    debugLog('✅ Toggle request successful!');
-                    debugLog('Response data:', data);
-
-                    // Update toast to success
-                    updateToast(
-                        toastId,
-                        `Aufgabe ${newStatus === 'done' ? 'erledigt' : 'reaktiviert'}! ✓`,
-                        'success',
-                        2000
-                    );
-
-                    debugLog('🔄 Calling loadTasks() to refresh UI...');
-                    const loadStartTime = performance.now();
-
-                    await loadTasks();
-
-                    const loadEndTime = performance.now();
-                    const loadDuration = (loadEndTime - loadStartTime).toFixed(2);
-
-                    debugLog(`✅ loadTasks() completed in ${loadDuration}ms`);
-
-                    // Check if task was actually updated in allTasks
-                    debugLog('🔍 Searching for task in allTasks...');
-                    debugLog(`  - Looking for task ID: ${taskId} (type: ${typeof taskId})`);
-                    debugLog(`  - Total tasks loaded: ${allTasks.length}`);
-                    debugLog(`  - Sample task IDs: ${allTasks.slice(0, 5).map(t => `${t.id} (${typeof t.id})`).join(', ')}`);
-
-                    // Convert taskId to string for comparison (Turso returns IDs as strings!)
-                    const taskIdStr = String(taskId);
-                    const updatedTask = allTasks.find(t => String(t.id) === taskIdStr);
-
-                    if (updatedTask) {
-                        debugLog('✅ Task found in allTasks!');
-                        debugLog('📝 Updated task data:', {
-                            id: updatedTask.id,
-                            date: updatedTask.date,
-                            room: updatedTask.room_name,
-                            guest: updatedTask.guest_name,
-                            newStatus: updatedTask.status,
-                            expectedStatus: newStatus
-                        });
-
-                        if (updatedTask.status === newStatus) {
-                            debugLog('✅✅✅ STATUS UPDATE VERIFIED! ✅✅✅');
-                            showToast('✅ Aufgabe erfolgreich aktualisiert!', 'success', 3000);
-                        } else {
-                            debugLog('❌❌❌ STATUS MISMATCH! ❌❌❌');
-                            debugLog(`Expected: ${newStatus}, Got: ${updatedTask.status}`);
-                            showToast('⚠️ Status-Mismatch! Siehe Debug Log', 'error', 5000);
-                        }
+                    if (result && result.affected_row_count === 1) {
+                        debugLog('✅ Backend confirmed: affected_row_count=1');
+                        debugLog(`📊 Query took ${result.query_duration_ms}ms in database`);
+                        debugLog('═══════════════════════════════════════════════════════');
+                        debugLog('✅ OPTIMISTIC UPDATE CONFIRMED BY BACKEND');
+                        debugLog('═══════════════════════════════════════════════════════');
                     } else {
-                        debugLog('⚠️ Task not found in allTasks array');
-                        debugLog('💡 This is OK if the task belongs to a different date than currently displayed');
-                        debugLog('🔍 Checking if UPDATE was successful in database...');
-
-                        // Check if UPDATE was successful by looking at response data
-                        if (data.results && data.results[0] && data.results[0].response && data.results[0].response.result) {
-                            const result = data.results[0].response.result;
-                            debugLog('📊 Database UPDATE result:', {
-                                affected_rows: result.affected_row_count,
-                                rows_written: result.rows_written,
-                                query_duration_ms: result.query_duration_ms
-                            });
-
-                            if (result.affected_row_count === 1) {
-                                debugLog('✅✅✅ DATABASE UPDATE SUCCESSFUL! ✅✅✅');
-                                debugLog('💡 Task was updated but belongs to a different date');
-                                showToast('✅ Aufgabe erfolgreich aktualisiert! (anderes Datum)', 'success', 3000);
-                            } else {
-                                debugLog('❌ Database UPDATE affected 0 rows!');
-                                showToast('⚠️ Update fehlgeschlagen - 0 Rows affected', 'error', 5000);
-                            }
-                        } else {
-                            debugLog('⚠️ Cannot verify database UPDATE result');
-                            showToast('⚠️ Update-Status unbekannt', 'error', 5000);
-                        }
+                        debugLog('⚠️ Backend returned 0 affected rows (task may not exist)');
                     }
-
-                    debugLog('═══════════════════════════════════════════════════════');
-                    debugLog('✅ TOGGLE TASK COMPLETED SUCCESSFULLY');
-                    debugLog('═══════════════════════════════════════════════════════');
                 } else {
-                    debugLog('❌ Toggle request failed!');
+                    // 5️⃣ ROLLBACK ON ERROR
+                    debugLog('❌ Backend request failed! Rolling back...');
                     debugLog('Error response:', data);
 
-                    updateToast(
-                        toastId,
-                        'Fehler beim Aktualisieren: ' + (data.error || response.statusText),
+                    // Rollback to old status
+                    allTasks[taskIndex].status = oldStatus;
+                    debugLog(`↩️ ROLLBACK: status="${newStatus}" → "${oldStatus}"`);
+
+                    // Restore scroll position
+                    const scrollTop = content ? content.scrollTop : 0;
+                    const scrollLeft = content ? content.scrollLeft : 0;
+
+                    // Redraw UI with rolled-back state
+                    displayTasks();
+
+                    // Restore scroll position again
+                    if (content) {
+                        content.scrollTop = scrollTop;
+                        content.scrollLeft = scrollLeft;
+                    }
+
+                    // Show error toast
+                    showToast(
+                        '❌ Fehler: ' + (data.error || response.statusText),
                         'error',
                         5000
                     );
 
-                    showError('Fehler beim Aktualisieren: ' + (data.error || response.statusText));
+                    debugLog('═══════════════════════════════════════════════════════');
+                    debugLog('↩️ ROLLBACK COMPLETED');
+                    debugLog('═══════════════════════════════════════════════════════');
                 }
+
             } catch (error) {
-                debugLog('❌❌❌ FATAL ERROR IN TOGGLE TASK ❌❌❌');
-                debugLog('Error name:', error.name);
-                debugLog('Error message:', error.message);
-                debugLog('Error stack:', error.stack);
+                // 6️⃣ ROLLBACK ON EXCEPTION
+                debugLog('❌❌❌ EXCEPTION! Rolling back... ❌❌❌');
+                debugLog('Error:', error);
 
-                updateToast(
-                    toastId,
-                    'Fehler: ' + error.message,
-                    'error',
-                    5000
-                );
+                // Rollback to old status
+                const taskIndex = allTasks.findIndex(t => String(t.id) === String(taskId));
+                if (taskIndex >= 0) {
+                    const oldStatus = allTasks[taskIndex].status === 'done' ? 'pending' : 'done'; // Reverse
+                    allTasks[taskIndex].status = oldStatus;
+                    debugLog(`↩️ ROLLBACK to oldStatus="${oldStatus}"`);
 
-                showError('Fehler: ' + error.message);
+                    // Restore scroll & redraw
+                    const content = document.getElementById('content');
+                    const scrollTop = content ? content.scrollTop : 0;
+                    const scrollLeft = content ? content.scrollLeft : 0;
+
+                    displayTasks();
+
+                    if (content) {
+                        content.scrollTop = scrollTop;
+                        content.scrollLeft = scrollLeft;
+                    }
+                }
+
+                showToast('❌ Netzwerkfehler: ' + error.message, 'error', 5000);
+
+                debugLog('═══════════════════════════════════════════════════════');
+                debugLog('↩️ EXCEPTION ROLLBACK COMPLETED');
+                debugLog('═══════════════════════════════════════════════════════');
             }
         }
 
