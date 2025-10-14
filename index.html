@@ -1498,10 +1498,20 @@
                     debugLog(`✅ loadTasks() completed in ${loadDuration}ms`);
 
                     // Check if task was actually updated in allTasks
-                    const updatedTask = allTasks.find(t => t.id === taskId);
+                    debugLog('🔍 Searching for task in allTasks...');
+                    debugLog(`  - Looking for task ID: ${taskId} (type: ${typeof taskId})`);
+                    debugLog(`  - Total tasks loaded: ${allTasks.length}`);
+                    debugLog(`  - Sample task IDs: ${allTasks.slice(0, 5).map(t => `${t.id} (${typeof t.id})`).join(', ')}`);
+
+                    // Convert taskId to string for comparison (Turso returns IDs as strings!)
+                    const taskIdStr = String(taskId);
+                    const updatedTask = allTasks.find(t => String(t.id) === taskIdStr);
+
                     if (updatedTask) {
+                        debugLog('✅ Task found in allTasks!');
                         debugLog('📝 Updated task data:', {
                             id: updatedTask.id,
+                            date: updatedTask.date,
                             room: updatedTask.room_name,
                             guest: updatedTask.guest_name,
                             newStatus: updatedTask.status,
@@ -1510,15 +1520,38 @@
 
                         if (updatedTask.status === newStatus) {
                             debugLog('✅✅✅ STATUS UPDATE VERIFIED! ✅✅✅');
-                            showToast('UI erfolgreich aktualisiert!', 'success', 2000);
+                            showToast('✅ Aufgabe erfolgreich aktualisiert!', 'success', 3000);
                         } else {
                             debugLog('❌❌❌ STATUS MISMATCH! ❌❌❌');
                             debugLog(`Expected: ${newStatus}, Got: ${updatedTask.status}`);
                             showToast('⚠️ Status-Mismatch! Siehe Debug Log', 'error', 5000);
                         }
                     } else {
-                        debugLog('⚠️⚠️⚠️ TASK NOT FOUND AFTER RELOAD! ⚠️⚠️⚠️');
-                        showToast('⚠️ Task nicht gefunden nach Reload!', 'error', 5000);
+                        debugLog('⚠️ Task not found in allTasks array');
+                        debugLog('💡 This is OK if the task belongs to a different date than currently displayed');
+                        debugLog('🔍 Checking if UPDATE was successful in database...');
+
+                        // Check if UPDATE was successful by looking at response data
+                        if (data.results && data.results[0] && data.results[0].response && data.results[0].response.result) {
+                            const result = data.results[0].response.result;
+                            debugLog('📊 Database UPDATE result:', {
+                                affected_rows: result.affected_row_count,
+                                rows_written: result.rows_written,
+                                query_duration_ms: result.query_duration_ms
+                            });
+
+                            if (result.affected_row_count === 1) {
+                                debugLog('✅✅✅ DATABASE UPDATE SUCCESSFUL! ✅✅✅');
+                                debugLog('💡 Task was updated but belongs to a different date');
+                                showToast('✅ Aufgabe erfolgreich aktualisiert! (anderes Datum)', 'success', 3000);
+                            } else {
+                                debugLog('❌ Database UPDATE affected 0 rows!');
+                                showToast('⚠️ Update fehlgeschlagen - 0 Rows affected', 'error', 5000);
+                            }
+                        } else {
+                            debugLog('⚠️ Cannot verify database UPDATE result');
+                            showToast('⚠️ Update-Status unbekannt', 'error', 5000);
+                        }
                     }
 
                     debugLog('═══════════════════════════════════════════════════════');
