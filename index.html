@@ -729,12 +729,156 @@
             margin-top: 4px;
             font-size: 11px;
         }
+
+        /* Password Modal */
+        .password-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 20px;
+        }
+
+        .password-modal.hidden {
+            display: none;
+        }
+
+        .password-box {
+            background: linear-gradient(135deg, var(--slate-800), var(--slate-900));
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--slate-700);
+        }
+
+        .password-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .password-header .lock-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .password-header h2 {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .password-header p {
+            color: var(--slate-400);
+            font-size: 14px;
+        }
+
+        .password-input-wrapper {
+            margin-bottom: 20px;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 16px 20px;
+            background: var(--slate-700);
+            border: 2px solid var(--slate-600);
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .password-submit {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .password-submit:hover {
+            background: var(--primary-dark);
+        }
+
+        .password-submit:active {
+            transform: scale(0.98);
+        }
+
+        .password-error {
+            background: var(--danger);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .password-error.visible {
+            display: block;
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
     </style>
 </head>
 <body>
+    <!-- Password Protection Modal -->
+    <div class="password-modal" id="passwordModal">
+        <div class="password-box">
+            <div class="password-header">
+                <div class="lock-icon">🔒</div>
+                <h2>Geschützter Bereich</h2>
+                <p>Bitte Passwort eingeben</p>
+            </div>
+            <div class="password-error" id="passwordError">
+                ❌ Falsches Passwort
+            </div>
+            <form onsubmit="checkPassword(event)">
+                <div class="password-input-wrapper">
+                    <input
+                        type="password"
+                        id="passwordInput"
+                        class="password-input"
+                        placeholder="••••••••"
+                        autocomplete="off"
+                        required
+                    />
+                </div>
+                <button type="submit" class="password-submit">
+                    Anmelden
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div class="header">
         <div class="header-top">
-            <h1>🧹 DPolG Putzplan</h1>
+            <h1>🧹 DPolG Putzplan - Stiftung</h1>
             <div class="view-switcher">
                 <button class="view-btn active" onclick="switchView('list')">📋 Liste</button>
                 <button class="view-btn" onclick="switchView('timeline')">📅 Timeline</button>
@@ -774,6 +918,73 @@
     </div>
 
     <script>
+        // ═══════════════════════════════════════════════════════════════
+        // 🔒 PASSWORD PROTECTION SYSTEM
+        // ═══════════════════════════════════════════════════════════════
+
+        // Hardcoded password (kann später in Desktop App konfigurierbar gemacht werden)
+        const CORRECT_PASSWORD = 'putzplan2025';
+
+        // Check if user is authenticated (on page load)
+        function checkAuth() {
+            const isAuthenticated = sessionStorage.getItem('authenticated') === 'true';
+
+            if (!isAuthenticated) {
+                // Show password modal
+                document.getElementById('passwordModal').classList.remove('hidden');
+                // Auto-focus password input
+                setTimeout(() => {
+                    document.getElementById('passwordInput').focus();
+                }, 100);
+            } else {
+                // Hide password modal
+                document.getElementById('passwordModal').classList.add('hidden');
+            }
+        }
+
+        // Handle password form submission
+        function checkPassword(event) {
+            event.preventDefault();
+
+            const input = document.getElementById('passwordInput');
+            const errorDiv = document.getElementById('passwordError');
+            const enteredPassword = input.value;
+
+            if (enteredPassword === CORRECT_PASSWORD) {
+                // Correct password
+                sessionStorage.setItem('authenticated', 'true');
+
+                // Hide modal with smooth animation
+                const modal = document.getElementById('passwordModal');
+                modal.style.opacity = '0';
+                modal.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.style.opacity = '1';
+                }, 300);
+
+                // Success toast
+                showToast('✅ Erfolgreich angemeldet', 'success', 2000);
+            } else {
+                // Wrong password
+                errorDiv.classList.add('visible');
+                input.value = '';
+                input.focus();
+
+                // Hide error after 3 seconds
+                setTimeout(() => {
+                    errorDiv.classList.remove('visible');
+                }, 3000);
+            }
+        }
+
+        // Run auth check on page load
+        checkAuth();
+
+        // ═══════════════════════════════════════════════════════════════
+        // 📱 CLEANING APP LOGIC
+        // ═══════════════════════════════════════════════════════════════
+
         // API Endpoint - Vercel Serverless Function
         const API_URL = '/api/tasks';
 
