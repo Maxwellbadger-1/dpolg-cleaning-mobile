@@ -1267,7 +1267,8 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(requestBody)
+                    body: JSON.stringify(requestBody),
+                    cache: 'no-store'  // 🔥 Disable browser cache to always get fresh data!
                 });
 
                 const fetchEndTime = performance.now();
@@ -1719,7 +1720,8 @@
                         action: 'toggleTask',
                         taskId: taskId,
                         newStatus: newStatus
-                    })
+                    }),
+                    cache: 'no-store'  // 🔥 Disable browser cache to always get fresh data!
                 });
 
                 const fetchDuration = (performance.now() - fetchStartTime).toFixed(2);
