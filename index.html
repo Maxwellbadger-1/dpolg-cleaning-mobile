@@ -1157,10 +1157,16 @@
                     <div class="filter-options" id="locationFilterOptions"></div>
                 </div>
 
-                <!-- Date Filter (only in List View) -->
+                <!-- Date Filter (List View: 7 days + date picker) -->
                 <div class="filter-section" id="dateFilterSection">
                     <div class="filter-section-title">📅 Datum</div>
                     <div class="filter-options" id="dateFilterOptions"></div>
+                </div>
+
+                <!-- Month/Year Filter (Timeline View only) -->
+                <div class="filter-section" id="monthFilterSection" style="display: none;">
+                    <div class="filter-section-title">📅 Monat</div>
+                    <div class="filter-options" id="monthFilterOptions"></div>
                 </div>
             </div>
         </div>
@@ -1442,21 +1448,25 @@
 
             locationOptions.innerHTML = locationHTML;
 
-            // 2️⃣ Date Filter Options (only in List View)
+            // 2️⃣ Date Filter Options (List View: 7 days + date picker)
             const dateFilterSection = document.getElementById('dateFilterSection');
-            if (!dateFilterSection) {
-                debugLog('⚠️ dateFilterSection element not found');
-                updateFilterChips(); // Update chips only
+            const monthFilterSection = document.getElementById('monthFilterSection');
+
+            if (!dateFilterSection || !monthFilterSection) {
+                debugLog('⚠️ Filter sections not found');
+                updateFilterChips();
                 return;
             }
 
             if (currentView === 'list') {
+                // Show date filter, hide month filter
                 dateFilterSection.style.display = 'block';
+                monthFilterSection.style.display = 'none';
 
                 const dateOptions = document.getElementById('dateFilterOptions');
                 if (!dateOptions) {
                     debugLog('⚠️ dateFilterOptions element not found');
-                    updateFilterChips(); // Update chips only
+                    updateFilterChips();
                     return;
                 }
 
@@ -1480,10 +1490,54 @@
                     `;
                 }
 
+                // Add "Datum wählen..." option with date picker
+                dateHTML += `
+                    <div class="filter-option" onclick="openDatePicker()">
+                        <div class="filter-option-radio">
+                            <div class="filter-option-radio-dot"></div>
+                        </div>
+                        <div class="filter-option-label">📅 Datum wählen...</div>
+                    </div>
+                `;
+
                 dateOptions.innerHTML = dateHTML;
+
             } else {
-                // Hide date filter in Timeline View
+                // Timeline View: Show month filter, hide date filter
                 dateFilterSection.style.display = 'none';
+                monthFilterSection.style.display = 'block';
+
+                const monthOptions = document.getElementById('monthFilterOptions');
+                if (!monthOptions) {
+                    debugLog('⚠️ monthFilterOptions element not found');
+                    updateFilterChips();
+                    return;
+                }
+
+                // Generate next 3 months
+                const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+                                   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+                let monthHTML = '';
+                const today = new Date();
+
+                for (let i = 0; i < 3; i++) {
+                    const monthDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                    const m = monthDate.getMonth();
+                    const y = monthDate.getFullYear();
+                    const isSelected = (m === selectedMonth && y === selectedYear);
+
+                    monthHTML += `
+                        <div class="filter-option ${isSelected ? 'selected' : ''}" onclick="selectMonthFilter(${m}, ${y})">
+                            <div class="filter-option-radio">
+                                <div class="filter-option-radio-dot"></div>
+                            </div>
+                            <div class="filter-option-label">📅 ${monthNames[m]} ${y}</div>
+                        </div>
+                    `;
+                }
+
+                monthOptions.innerHTML = monthHTML;
             }
 
             // Update Filter Chips
@@ -1501,7 +1555,50 @@
             currentDate = dateStr;
             generateFilterOptions(); // Update UI
             displayTasks(); // Refresh tasks
+            closeFilterModal(); // Auto-close after selection
             debugLog(`📅 Date filter changed: ${dateStr}`);
+        }
+
+        function selectMonthFilter(month, year) {
+            selectedMonth = month;
+            selectedYear = year;
+            generateFilterOptions(); // Update UI
+            displayTasks(); // Refresh tasks
+            closeFilterModal(); // Auto-close after selection
+            debugLog(`📅 Month filter changed: ${month}/${year}`);
+        }
+
+        function openDatePicker() {
+            // Create a temporary native date input
+            const tempInput = document.createElement('input');
+            tempInput.type = 'date';
+            tempInput.style.position = 'fixed';
+            tempInput.style.opacity = '0';
+            tempInput.style.pointerEvents = 'none';
+
+            // Set min/max dates if available
+            if (minDate) tempInput.min = minDate;
+            if (maxDate) tempInput.max = maxDate;
+
+            // Set current date as default
+            tempInput.value = currentDate;
+
+            document.body.appendChild(tempInput);
+
+            // Listen for change
+            tempInput.addEventListener('change', function() {
+                if (tempInput.value) {
+                    currentDate = tempInput.value;
+                    generateFilterOptions();
+                    displayTasks();
+                    closeFilterModal();
+                    debugLog(`📅 Date picked: ${tempInput.value}`);
+                }
+                document.body.removeChild(tempInput);
+            });
+
+            // Trigger native date picker
+            tempInput.showPicker();
         }
 
         function updateFilterChips() {
@@ -1547,6 +1644,25 @@
                 }
             }
 
+            // Month chip (only in Timeline View, and only if not current month)
+            if (currentView === 'timeline') {
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+
+                if (selectedMonth !== currentMonth || selectedYear !== currentYear) {
+                    activeFilterCount++;
+                    const monthNames = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+                    const label = `${monthNames[selectedMonth]} ${selectedYear}`;
+                    chips.push(`
+                        <div class="filter-chip" onclick="removeMonthFilter()">
+                            <span>📅 ${label}</span>
+                            <span class="filter-chip-close">✕</span>
+                        </div>
+                    `);
+                }
+            }
+
             // Update chips HTML
             chipsContainer.innerHTML = chips.join('');
 
@@ -1569,6 +1685,14 @@
 
         function removeDateFilter() {
             currentDate = new Date().toISOString().split('T')[0];
+            generateFilterOptions();
+            displayTasks();
+        }
+
+        function removeMonthFilter() {
+            const today = new Date();
+            selectedMonth = today.getMonth();
+            selectedYear = today.getFullYear();
             generateFilterOptions();
             displayTasks();
         }
@@ -1901,25 +2025,8 @@
                 dates.push(date.toISOString().split('T')[0]);
             }
 
-            // Monats-Buttons
-            const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-                               'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-
-            let monthSelectorHTML = '<div class="timeline-month-selector">';
-            const today = new Date();
-            for (let i = 0; i < 3; i++) {
-                const monthDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
-                const m = monthDate.getMonth();
-                const y = monthDate.getFullYear();
-                const isActive = (m === selectedMonth && y === selectedYear);
-                monthSelectorHTML += `
-                    <button class="timeline-month-btn ${isActive ? 'active' : ''}"
-                            onclick="selectMonth(${m}, ${y})">
-                        ${monthNames[m]} ${y}
-                    </button>
-                `;
-            }
-            monthSelectorHTML += '</div>';
+            // ✅ OLD: Monats-Buttons wurden hier generiert
+            // ✅ NEW: Monatswahl jetzt im Bottom Sheet Filter!
 
             // Filter Tasks nach Ort (vor Gruppierung) (SNAKE_CASE für Turso DB!)
             let filteredTasks = allTasks;
@@ -2056,8 +2163,8 @@
 
             html += '</div></div>';
 
-            // Füge Monats-Buttons am Anfang hinzu
-            content.innerHTML = monthSelectorHTML + html;
+            // ✅ Direkt anzeigen (keine Monats-Buttons mehr - jetzt im Bottom Sheet Filter!)
+            content.innerHTML = html;
         }
 
         // ═══════════════════════════════════════════════════════════════
