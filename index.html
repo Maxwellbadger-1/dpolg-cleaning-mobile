@@ -561,13 +561,14 @@
         /* Timeline View Styles */
         .timeline-container {
             overflow-x: auto;
-            overflow-y: visible;
+            overflow-y: auto;  /* ✅ Changed from 'visible' to 'auto' - enables vertical scroll + sticky headers */
             -webkit-overflow-scrolling: touch;
             padding-bottom: 20px;
             /* Kein padding-left damit sticky column am Rand klebt */
             margin: 0 -16px;
             padding-left: 0;
             padding-right: 16px;
+            max-height: calc(100vh - 300px);  /* ✅ Limit height so container scrolls, not body */
         }
 
         .timeline-grid {
