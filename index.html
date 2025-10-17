@@ -40,8 +40,8 @@
         .header {
             background: linear-gradient(135deg, var(--slate-800), var(--slate-900));
             border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
+            padding: 20px;
+            margin-bottom: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
@@ -49,14 +49,60 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
+            gap: 12px;
         }
 
         .header h1 {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             color: white;
             margin: 0;
+            flex: 1;
+        }
+
+        /* Compact Filter Button */
+        .filter-trigger-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: var(--slate-700);
+            border: 1px solid var(--slate-600);
+            border-radius: 10px;
+            color: var(--slate-300);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .filter-trigger-btn:active {
+            transform: scale(0.98);
+        }
+
+        .filter-trigger-btn.has-filters {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--slate-900);
         }
 
         .header .date {
@@ -94,40 +140,248 @@
             transform: scale(0.98);
         }
 
-        .location-filter {
+        /* Filter Chips (Active Filters) */
+        .active-filters {
             display: flex;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 4px;
+            padding: 0 2px 4px 2px;
         }
 
-        .location-filter::-webkit-scrollbar {
+        .active-filters::-webkit-scrollbar {
             display: none;
         }
 
-        .location-btn {
-            background: var(--slate-800);
-            border: 1px solid var(--slate-700);
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 14px;
+        .active-filters:empty {
+            display: none;
+        }
+
+        .filter-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: 20px;
+            font-size: 13px;
             font-weight: 600;
+            color: white;
             white-space: nowrap;
             cursor: pointer;
             transition: all 0.2s;
-            color: var(--slate-300);
         }
 
-        .location-btn:active {
+        .filter-chip:active {
             transform: scale(0.98);
         }
 
-        .location-btn.active {
-            background: var(--primary);
+        .filter-chip-close {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        /* Bottom Sheet Modal */
+        .filter-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .filter-modal.visible {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+        }
+
+        .filter-bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, var(--slate-800), var(--slate-900));
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+            max-height: 70vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .filter-modal.closing .filter-bottom-sheet {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .filter-sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 20px 16px 20px;
+            border-bottom: 1px solid var(--slate-700);
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, var(--slate-800), var(--slate-900));
+            z-index: 1;
+        }
+
+        .filter-sheet-title {
+            font-size: 20px;
+            font-weight: 700;
             color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-close-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--slate-700);
+            border: none;
+            color: var(--slate-300);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .filter-close-btn:active {
+            transform: scale(0.95);
+            background: var(--slate-600);
+        }
+
+        .filter-sheet-content {
+            padding: 20px;
+        }
+
+        .filter-section {
+            margin-bottom: 24px;
+        }
+
+        .filter-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--slate-400);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--slate-800);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-option:active {
+            transform: scale(0.99);
+        }
+
+        .filter-option.selected {
+            background: var(--primary);
             border-color: var(--primary);
+        }
+
+        .filter-option-radio {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--slate-600);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .filter-option.selected .filter-option-radio {
+            border-color: white;
+        }
+
+        .filter-option-radio-dot {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            transform: scale(0);
+            transition: transform 0.2s;
+        }
+
+        .filter-option.selected .filter-option-radio-dot {
+            transform: scale(1);
+        }
+
+        .filter-option-label {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--slate-300);
+        }
+
+        .filter-option.selected .filter-option-label {
+            color: white;
+        }
+
+        /* Hide old filter UI */
+        .location-filter {
+            display: none;
         }
 
         .room-location {
@@ -137,12 +391,9 @@
             margin-top: 4px;
         }
 
+        /* Hide old date picker (moved to Bottom Sheet) */
         .date-picker-wrapper {
-            background: var(--slate-800);
-            border: 1px solid var(--slate-700);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
+            display: none;
         }
 
         .date-picker-wrapper label {
@@ -171,42 +422,9 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
+        /* Hide old tabs (moved to Bottom Sheet) */
         .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 4px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .tabs::-webkit-scrollbar {
             display: none;
-        }
-
-        .tab {
-            background: var(--slate-800);
-            border: 1px solid var(--slate-700);
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            white-space: nowrap;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: var(--slate-300);
-        }
-
-        .tab:active {
-            transform: scale(0.98);
-        }
-
-        .tab.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
         }
 
         .task-card {
@@ -568,7 +786,7 @@
             margin: 0 -16px;
             padding-left: 0;
             padding-right: 16px;
-            max-height: calc(100vh - 300px);  /* ✅ Limit height so container scrolls, not body */
+            max-height: calc(100vh - 180px);  /* ✅ +120px mehr Platz durch kompakte Filter! */
         }
 
         .timeline-grid {
@@ -879,28 +1097,26 @@
 
     <div class="header">
         <div class="header-top">
-            <h1>🧹 DPolG Putzplan - Stiftung</h1>
+            <h1>🧹 DPolG Putzplan</h1>
+            <button class="filter-trigger-btn" id="filterTriggerBtn" onclick="openFilterModal()">
+                <span>🔽</span>
+                <span>Filter</span>
+                <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
+            </button>
             <div class="view-switcher">
-                <button class="view-btn active" onclick="switchView('list')">📋 Liste</button>
-                <button class="view-btn" onclick="switchView('timeline')">📅 Timeline</button>
+                <button class="view-btn active" onclick="switchView('list')">📋</button>
+                <button class="view-btn" onclick="switchView('timeline')">📅</button>
             </div>
         </div>
-        <div class="date" id="current-date"></div>
     </div>
 
-    <div class="location-filter" id="location-filter"></div>
+    <!-- Active Filter Chips -->
+    <div class="active-filters" id="activeFilters"></div>
 
-    <div id="date-picker-container" class="date-picker-wrapper" style="display: none;">
-        <label for="datePicker">Datum auswählen:</label>
-        <input
-            type="date"
-            id="datePicker"
-            class="date-input"
-            onchange="selectDateFromPicker(this.value)"
-        />
-    </div>
-
-    <div class="tabs" id="tabs"></div>
+    <!-- Hidden: Old Filter UI (kept for compatibility) -->
+    <div class="location-filter" id="location-filter" style="display: none;"></div>
+    <div id="date-picker-container" class="date-picker-wrapper" style="display: none;"></div>
+    <div class="tabs" id="tabs" style="display: none;"></div>
 
     <div id="content">
         <div class="loading">Lädt Aufgaben...</div>
@@ -916,6 +1132,32 @@
     <div class="debug-panel" id="debug-panel">
         <h3 style="color: var(--warning); margin-bottom: 12px;">🐛 Debug Log</h3>
         <div id="debug-entries"></div>
+    </div>
+
+    <!-- Filter Bottom Sheet Modal -->
+    <div class="filter-modal" id="filterModal" onclick="closeFilterModalIfBackdrop(event)">
+        <div class="filter-bottom-sheet" onclick="event.stopPropagation()">
+            <div class="filter-sheet-header">
+                <div class="filter-sheet-title">
+                    <span>⚙️</span>
+                    <span>Filter</span>
+                </div>
+                <button class="filter-close-btn" onclick="closeFilterModal()">✕</button>
+            </div>
+            <div class="filter-sheet-content">
+                <!-- Location Filter -->
+                <div class="filter-section">
+                    <div class="filter-section-title">📍 Ort</div>
+                    <div class="filter-options" id="locationFilterOptions"></div>
+                </div>
+
+                <!-- Date Filter (only in List View) -->
+                <div class="filter-section" id="dateFilterSection">
+                    <div class="filter-section-title">📅 Datum</div>
+                    <div class="filter-options" id="dateFilterOptions"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1148,29 +1390,187 @@
             }
         }
 
-        // Orte-Filter generieren
-        function generateLocationFilter() {
-            const filterContainer = document.getElementById('location-filter');
+        // ═══════════════════════════════════════════════════════════════
+        // 🎯 MODERN FILTER SYSTEM (Bottom Sheet + Filter Chips)
+        // ═══════════════════════════════════════════════════════════════
 
-            // Extrahiere einzigartige Orte aus allTasks (SNAKE_CASE für Turso DB!)
+        function generateFilterOptions() {
+            // Extract unique locations
             const locations = [...new Set(allTasks.map(task => task.room_location).filter(loc => loc))];
             locations.sort();
 
-            // Filter HTML bauen
-            let html = `<button class="location-btn ${selectedLocation === 'all' ? 'active' : ''}" onclick="selectLocation('all')">📍 Alle Orte</button>`;
+            // 1️⃣ Location Filter Options
+            const locationOptions = document.getElementById('locationFilterOptions');
+            let locationHTML = `
+                <div class="filter-option ${selectedLocation === 'all' ? 'selected' : ''}" onclick="selectLocationFilter('all')">
+                    <div class="filter-option-radio">
+                        <div class="filter-option-radio-dot"></div>
+                    </div>
+                    <div class="filter-option-label">📍 Alle Orte</div>
+                </div>
+            `;
 
             locations.forEach(location => {
                 const icon = location === 'Fall' ? '🏔️' : location === 'Langenprozelten' ? '🏡' : '📍';
-                html += `<button class="location-btn ${selectedLocation === location ? 'active' : ''}" onclick="selectLocation('${location}')">${icon} ${location}</button>`;
+                const isSelected = selectedLocation === location;
+                locationHTML += `
+                    <div class="filter-option ${isSelected ? 'selected' : ''}" onclick="selectLocationFilter('${location}')">
+                        <div class="filter-option-radio">
+                            <div class="filter-option-radio-dot"></div>
+                        </div>
+                        <div class="filter-option-label">${icon} ${location}</div>
+                    </div>
+                `;
             });
 
-            filterContainer.innerHTML = html;
+            locationOptions.innerHTML = locationHTML;
+
+            // 2️⃣ Date Filter Options (only in List View)
+            const dateFilterSection = document.getElementById('dateFilterSection');
+            if (currentView === 'list') {
+                dateFilterSection.style.display = 'block';
+
+                const dateOptions = document.getElementById('dateFilterOptions');
+                let dateHTML = '';
+
+                // Generate 7 days
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const isSelected = currentDate === dateStr;
+                    const label = i === 0 ? 'Heute' : i === 1 ? 'Morgen' : date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+
+                    dateHTML += `
+                        <div class="filter-option ${isSelected ? 'selected' : ''}" onclick="selectDateFilter('${dateStr}')">
+                            <div class="filter-option-radio">
+                                <div class="filter-option-radio-dot"></div>
+                            </div>
+                            <div class="filter-option-label">📅 ${label}</div>
+                        </div>
+                    `;
+                }
+
+                dateOptions.innerHTML = dateHTML;
+            } else {
+                // Hide date filter in Timeline View
+                dateFilterSection.style.display = 'none';
+            }
+
+            // Update Filter Chips
+            updateFilterChips();
+        }
+
+        function selectLocationFilter(location) {
+            selectedLocation = location;
+            generateFilterOptions(); // Update UI
+            displayTasks(); // Refresh tasks
+            debugLog(`📍 Location filter changed: ${location}`);
+        }
+
+        function selectDateFilter(dateStr) {
+            currentDate = dateStr;
+            generateFilterOptions(); // Update UI
+            displayTasks(); // Refresh tasks
+            debugLog(`📅 Date filter changed: ${dateStr}`);
+        }
+
+        function updateFilterChips() {
+            const chipsContainer = document.getElementById('activeFilters');
+            const filterBtn = document.getElementById('filterTriggerBtn');
+            const filterBadge = document.getElementById('filterBadge');
+
+            let chips = [];
+            let activeFilterCount = 0;
+
+            // Location chip
+            if (selectedLocation !== 'all') {
+                activeFilterCount++;
+                const icon = selectedLocation === 'Fall' ? '🏔️' : selectedLocation === 'Langenprozelten' ? '🏡' : '📍';
+                chips.push(`
+                    <div class="filter-chip" onclick="removeLocationFilter()">
+                        <span>${icon} ${selectedLocation}</span>
+                        <span class="filter-chip-close">✕</span>
+                    </div>
+                `);
+            }
+
+            // Date chip (only in List View, and only if not today)
+            if (currentView === 'list') {
+                const today = new Date().toISOString().split('T')[0];
+                if (currentDate !== today) {
+                    activeFilterCount++;
+                    const date = new Date(currentDate + 'T00:00:00');
+                    const daysDiff = Math.ceil((date - new Date(today + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+                    const label = daysDiff === 1 ? 'Morgen' : date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                    chips.push(`
+                        <div class="filter-chip" onclick="removeDateFilter()">
+                            <span>📅 ${label}</span>
+                            <span class="filter-chip-close">✕</span>
+                        </div>
+                    `);
+                }
+            }
+
+            // Update chips HTML
+            chipsContainer.innerHTML = chips.join('');
+
+            // Update filter button state
+            if (activeFilterCount > 0) {
+                filterBtn.classList.add('has-filters');
+                filterBadge.textContent = activeFilterCount;
+                filterBadge.style.display = 'flex';
+            } else {
+                filterBtn.classList.remove('has-filters');
+                filterBadge.style.display = 'none';
+            }
+        }
+
+        function removeLocationFilter() {
+            selectedLocation = 'all';
+            generateFilterOptions();
+            displayTasks();
+        }
+
+        function removeDateFilter() {
+            currentDate = new Date().toISOString().split('T')[0];
+            generateFilterOptions();
+            displayTasks();
+        }
+
+        function openFilterModal() {
+            const modal = document.getElementById('filterModal');
+            modal.classList.add('visible');
+            generateFilterOptions(); // Refresh filter options
+            debugLog('🔽 Filter modal opened');
+        }
+
+        function closeFilterModal() {
+            const modal = document.getElementById('filterModal');
+            modal.classList.add('closing');
+
+            setTimeout(() => {
+                modal.classList.remove('visible', 'closing');
+            }, 300); // Match animation duration
+
+            debugLog('🔼 Filter modal closed');
+        }
+
+        function closeFilterModalIfBackdrop(event) {
+            if (event.target.id === 'filterModal') {
+                closeFilterModal();
+            }
+        }
+
+        // Old generateLocationFilter (kept for compatibility, but hidden)
+        function generateLocationFilter() {
+            // Deprecated - now handled by generateFilterOptions()
+            // Keep empty function to avoid errors
         }
 
         function selectLocation(location) {
-            selectedLocation = location;
-            generateLocationFilter(); // Filter UI updaten
-            displayTasks(); // Tasks neu anzeigen
+            // Deprecated - now handled by selectLocationFilter()
+            selectLocationFilter(location);
         }
 
         function selectDate(date, tabElement) {
@@ -1326,8 +1726,8 @@
                     debugLog('🔧 Initializing date picker...');
                     initializeDatePicker();
 
-                    debugLog('🔧 Generating location filter...');
-                    generateLocationFilter();
+                    debugLog('🔧 Generating filter options...');
+                    generateFilterOptions();
 
                     debugLog('🎨 Calling displayTasks()...');
                     displayTasks();
@@ -1358,11 +1758,8 @@
             });
             event.target.classList.add('active');
 
-            // Date picker und Tabs nur in List-View anzeigen
-            const datePickerContainer = document.getElementById('date-picker-container');
-            const tabs = document.getElementById('tabs');
-            datePickerContainer.style.display = view === 'list' ? 'block' : 'none';
-            tabs.style.display = view === 'list' ? 'flex' : 'none';
+            // Update filter chips (date chip visibility depends on view)
+            updateFilterChips();
 
             // View neu rendern
             displayTasks();
