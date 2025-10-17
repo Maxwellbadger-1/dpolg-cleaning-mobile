@@ -1369,8 +1369,8 @@
             });
         }
 
-        // Aktuelle Datum anzeigen
-        document.getElementById('current-date').textContent = formatDate(currentDate);
+        // Aktuelle Datum anzeigen - REMOVED (not needed in new UI)
+        // document.getElementById('current-date').textContent = formatDate(currentDate);
 
         // Tabs für 7 Tage generieren
         function generateTabs() {
@@ -1395,12 +1395,23 @@
         // ═══════════════════════════════════════════════════════════════
 
         function generateFilterOptions() {
+            // Safety check: If no tasks loaded yet, skip filter generation
+            if (!allTasks || allTasks.length === 0) {
+                debugLog('⚠️ generateFilterOptions() skipped: No tasks loaded yet');
+                return;
+            }
+
             // Extract unique locations
             const locations = [...new Set(allTasks.map(task => task.room_location).filter(loc => loc))];
             locations.sort();
 
             // 1️⃣ Location Filter Options
             const locationOptions = document.getElementById('locationFilterOptions');
+            if (!locationOptions) {
+                debugLog('⚠️ locationFilterOptions element not found');
+                return;
+            }
+
             let locationHTML = `
                 <div class="filter-option ${selectedLocation === 'all' ? 'selected' : ''}" onclick="selectLocationFilter('all')">
                     <div class="filter-option-radio">
@@ -1427,10 +1438,22 @@
 
             // 2️⃣ Date Filter Options (only in List View)
             const dateFilterSection = document.getElementById('dateFilterSection');
+            if (!dateFilterSection) {
+                debugLog('⚠️ dateFilterSection element not found');
+                updateFilterChips(); // Update chips only
+                return;
+            }
+
             if (currentView === 'list') {
                 dateFilterSection.style.display = 'block';
 
                 const dateOptions = document.getElementById('dateFilterOptions');
+                if (!dateOptions) {
+                    debugLog('⚠️ dateFilterOptions element not found');
+                    updateFilterChips(); // Update chips only
+                    return;
+                }
+
                 let dateHTML = '';
 
                 // Generate 7 days
@@ -1479,6 +1502,12 @@
             const chipsContainer = document.getElementById('activeFilters');
             const filterBtn = document.getElementById('filterTriggerBtn');
             const filterBadge = document.getElementById('filterBadge');
+
+            // Safety check
+            if (!chipsContainer || !filterBtn || !filterBadge) {
+                debugLog('⚠️ updateFilterChips() skipped: Required elements not found');
+                return;
+            }
 
             let chips = [];
             let activeFilterCount = 0;
