@@ -2094,8 +2094,27 @@
                 };
             });
 
-            // Sortiere Zimmer alphabetisch
-            const sortedRooms = Object.keys(roomTasks).sort();
+            // ✅ SORTIERUNG: Nach Ort (Location) + Name (alphabetisch)
+            // Extrahiere Location für jedes Zimmer
+            const roomsWithLocation = Object.keys(roomTasks).map(roomName => {
+                const firstTask = Object.values(roomTasks[roomName])[0];
+                return {
+                    name: roomName,
+                    location: firstTask?.room_location || ''
+                };
+            });
+
+            // Sortiere nach Location, dann nach Name
+            const sortedRooms = roomsWithLocation
+                .sort((a, b) => {
+                    // Erst nach Location sortieren
+                    if (a.location !== b.location) {
+                        return a.location.localeCompare(b.location);
+                    }
+                    // Dann innerhalb der Location nach Name
+                    return a.name.localeCompare(b.name);
+                })
+                .map(room => room.name); // Nur Namen zurückgeben
 
             // Baue Timeline Grid HTML mit dynamischen Spalten
             let html = `<div class="timeline-container"><div class="timeline-grid" style="grid-template-columns: 120px repeat(${daysInMonth}, 140px);">`;
