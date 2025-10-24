@@ -123,3 +123,4 @@ Die Desktop-App sendet Daten an Turso:
 ---
 
 Made with ❤️ for DPolG
+
