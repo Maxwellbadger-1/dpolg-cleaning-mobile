@@ -2125,41 +2125,26 @@
                 }
 
                 debugLog(`  - Final checkInDate: ${checkInDate}, checkOutDate: ${checkOutDate}`);
+                debugLog(`  - emojis_start: ${task.emojis_start}`);
 
-                // Wenn wir Check-in haben, erstelle "occupied" Einträge für alle Tage zwischen Check-in und Check-out
-                if (checkInDate && checkInDate !== checkOutDate) {
-                    debugLog(`  - ✅ Creating occupied days from ${checkInDate} to ${checkOutDate}`);
-                    // Verwende String-Manipulation statt Date-Objekte (wegen Timezone-Problemen)
-                    const [startYear, startMonth, startDay] = checkInDate.split('-').map(Number);
-                    const [endYear, endMonth, endDay] = checkOutDate.split('-').map(Number);
+                // NUR Check-in Tag (erster Tag) anzeigen, wenn emojis_start vorhanden ist
+                // (z.B. Bettwäsche wechseln bei Anreise)
+                if (checkInDate && checkInDate !== checkOutDate && task.emojis_start) {
+                    debugLog(`  - ✅ Check-in day has emojis_start - adding check-in task`);
 
-                    const start = new Date(startYear, startMonth - 1, startDay);
-                    const end = new Date(endYear, endMonth - 1, endDay);
-
-                    // Alle Tage zwischen Check-in (inklusive) und Check-out (exklusiv)
-                    let loopDate = new Date(start); // Renamed from 'currentDate' to avoid variable conflict
-                    let daysCreated = 0;
-                    while (loopDate < end) {
-                        const year = loopDate.getFullYear();
-                        const month = String(loopDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(loopDate.getDate()).padStart(2, '0');
-                        const dateStr = `${year}-${month}-${day}`;
-
-                        // Nur hinzufügen wenn es NICHT der checkout-Tag ist
-                        if (dateStr !== checkOutDate && !roomTasks[task.room_name][dateStr]) {
-                            roomTasks[task.room_name][dateStr] = {
-                                ...task,
-                                isOccupied: true, // Markiere als "nur belegt"
-                                displayDate: dateStr
-                            };
-                            daysCreated++;
-                            debugLog(`    - Added occupied day: ${dateStr}`);
-                        }
-                        loopDate.setDate(loopDate.getDate() + 1);
+                    // Nur den Check-in Tag hinzufügen (NICHT die Tage dazwischen)
+                    if (!roomTasks[task.room_name][checkInDate]) {
+                        roomTasks[task.room_name][checkInDate] = {
+                            ...task,
+                            isOccupied: true, // Markiere als Check-in Tag mit Aufgaben
+                            displayDate: checkInDate
+                        };
+                        debugLog(`    - Added check-in day: ${checkInDate}`);
                     }
-                    debugLog(`  - ✅ Created ${daysCreated} occupied days`);
-                } else {
-                    debugLog(`  - ⚠️ NOT creating occupied days. Reason: checkInDate=${checkInDate}, checkOutDate=${checkOutDate}, match=${checkInDate === checkOutDate}`);
+                } else if (checkInDate && checkInDate !== checkOutDate && !task.emojis_start) {
+                    debugLog(`  - ⚠️ Check-in day has NO emojis_start - skipping (no tasks for cleaning crew)`);
+                } else if (checkInDate === checkOutDate) {
+                    debugLog(`  - ⚠️ Single-day booking (check-in = check-out) - only checkout task needed`);
                 }
 
                 // Check-out Tag (= Reinigungstag)
