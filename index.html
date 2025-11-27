@@ -2215,6 +2215,25 @@
                 filteredTasks = allTasks.filter(task => task.room_location === selectedLocation);
             }
 
+            // 🔍 DEBUG: Check for duplicates in filteredTasks
+            debugLog(`📊 allTasks.length: ${allTasks.length}`);
+            debugLog(`📊 filteredTasks.length: ${filteredTasks.length}`);
+            const filteredSeenIds = new Set();
+            const filteredDuplicateIds = new Set();
+            filteredTasks.forEach(task => {
+                if (filteredSeenIds.has(task.id)) {
+                    filteredDuplicateIds.add(task.id);
+                    debugLog(`🚨 DUPLICATE in filteredTasks: ID ${task.id} (room: ${task.room_name}, date: ${task.date})`);
+                } else {
+                    filteredSeenIds.add(task.id);
+                }
+            });
+            if (filteredDuplicateIds.size > 0) {
+                debugLog(`🚨 WARNING: ${filteredDuplicateIds.size} duplicate IDs found in filteredTasks!`);
+            } else {
+                debugLog('✅ No duplicate IDs in filteredTasks');
+            }
+
             // Gruppiere Tasks nach Zimmer und expandiere Buchungen über mehrere Tage
             const roomTasks = {};
             filteredTasks.forEach(task => {
