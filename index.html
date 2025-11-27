@@ -1831,7 +1831,7 @@
             if (allTasks.length === 0) return;
 
             // Find min and max dates from tasks
-            const dates = allTasks.map(task => task.date).filter(d => d);
+            const dates = allTasks.map(task => task.date || task.task_date).filter(d => d);
             if (dates.length === 0) return;
 
             minDate = dates.reduce((min, date) => date < min ? date : min, dates[0]);
@@ -1986,7 +1986,7 @@
             const content = document.getElementById('content');
 
             // Filter Tasks: Datum + Ort (SNAKE_CASE für Turso DB!)
-            let todayTasks = allTasks.filter(task => task.date === currentDate);
+            let todayTasks = allTasks.filter(task => (task.date || task.task_date) === currentDate);
             if (selectedLocation !== 'all') {
                 todayTasks = todayTasks.filter(task => task.room_location === selectedLocation);
             }
@@ -2087,7 +2087,7 @@
 
                 // Parse Check-in/Check-out aus extras JSON
                 let checkInDate = null;
-                let checkOutDate = task.date; // Checkout Date
+                let checkOutDate = task.date || task.task_date; // Checkout Date (support both column names)
 
                 try {
                     const extras = JSON.parse(task.extras || '{}');
