@@ -1287,7 +1287,7 @@
 
         let currentDate = new Date().toISOString().split('T')[0];
         let allTasks = [];
-        let currentView = 'list';
+        let currentView = 'timeline'; // Changed from 'list' to show occupied days by default
         let selectedMonth = new Date().getMonth(); // 0-11
         let selectedYear = new Date().getFullYear();
         let selectedLocation = 'all'; // Orte-Filter
