@@ -2218,6 +2218,13 @@
             // 🔍 DEBUG: Check for duplicates in filteredTasks
             debugLog(`📊 allTasks.length: ${allTasks.length}`);
             debugLog(`📊 filteredTasks.length: ${filteredTasks.length}`);
+
+            // Log ALL task IDs
+            debugLog('🔍 ALL TASK IDs in filteredTasks:');
+            filteredTasks.forEach((task, idx) => {
+                debugLog(`  [${idx}] ID=${task.id}, room=${task.room_name}, date=${task.date}`);
+            });
+
             const filteredSeenIds = new Set();
             const filteredDuplicateIds = new Set();
             filteredTasks.forEach(task => {
