@@ -2137,12 +2137,12 @@
                     const end = new Date(endYear, endMonth - 1, endDay);
 
                     // Alle Tage zwischen Check-in (inklusive) und Check-out (exklusiv)
-                    let currentDate = new Date(start);
+                    let loopDate = new Date(start); // Renamed from 'currentDate' to avoid variable conflict
                     let daysCreated = 0;
-                    while (currentDate < end) {
-                        const year = currentDate.getFullYear();
-                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(currentDate.getDate()).padStart(2, '0');
+                    while (loopDate < end) {
+                        const year = loopDate.getFullYear();
+                        const month = String(loopDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(loopDate.getDate()).padStart(2, '0');
                         const dateStr = `${year}-${month}-${day}`;
 
                         // Nur hinzufügen wenn es NICHT der checkout-Tag ist
@@ -2155,7 +2155,7 @@
                             daysCreated++;
                             debugLog(`    - Added occupied day: ${dateStr}`);
                         }
-                        currentDate.setDate(currentDate.getDate() + 1);
+                        loopDate.setDate(loopDate.getDate() + 1);
                     }
                     debugLog(`  - ✅ Created ${daysCreated} occupied days`);
                 } else {
@@ -2215,8 +2215,19 @@
                     ${location ? `<div class="room-location-small">📍 ${location}</div>` : ''}
                 </div>`;
 
+                // DEBUG: Log all dates in roomTasks for this room
+                debugLog(`🏠 Room ${room} has tasks for dates:`, Object.keys(roomTasks[room]));
+
                 dates.forEach(date => {
                     const task = roomTasks[room][date];
+
+                    // DEBUG: Log lookup result
+                    if (!task) {
+                        debugLog(`  ❌ No task found for room ${room} on ${date}`);
+                    } else {
+                        debugLog(`  ✅ Found task for room ${room} on ${date}, isOccupied=${task.isOccupied}`);
+                    }
+
                     html += '<div class="timeline-cell">';
 
                     if (task) {
