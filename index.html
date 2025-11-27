@@ -2089,20 +2089,32 @@
                 let checkInDate = null;
                 let checkOutDate = task.date || task.task_date; // Checkout Date (support both column names)
 
+                debugLog(`🔍 Processing task for room ${task.room_name}:`);
+                debugLog(`  - task.date: ${task.date}`);
+                debugLog(`  - task.task_date: ${task.task_date}`);
+                debugLog(`  - checkOutDate: ${checkOutDate}`);
+                debugLog(`  - task.extras: ${task.extras}`);
+
                 try {
                     const extras = JSON.parse(task.extras || '{}');
+                    debugLog(`  - extras parsed:`, extras);
                     // Versuche Check-in aus verschiedenen Quellen zu extrahieren
                     if (extras.original_checkin) {
                         checkInDate = extras.original_checkin;
+                        debugLog(`  - checkInDate from extras.original_checkin: ${checkInDate}`);
                     } else if (task.checkin_time) {
                         checkInDate = task.checkin_time;
+                        debugLog(`  - checkInDate from task.checkin_time: ${checkInDate}`);
                     }
                 } catch (e) {
-                    console.error('Error parsing extras:', e);
+                    debugLog(`  - ❌ Error parsing extras: ${e}`);
                 }
+
+                debugLog(`  - Final checkInDate: ${checkInDate}, checkOutDate: ${checkOutDate}`);
 
                 // Wenn wir Check-in haben, erstelle "occupied" Einträge für alle Tage zwischen Check-in und Check-out
                 if (checkInDate && checkInDate !== checkOutDate) {
+                    debugLog(`  - ✅ Creating occupied days from ${checkInDate} to ${checkOutDate}`);
                     // Verwende String-Manipulation statt Date-Objekte (wegen Timezone-Problemen)
                     const [startYear, startMonth, startDay] = checkInDate.split('-').map(Number);
                     const [endYear, endMonth, endDay] = checkOutDate.split('-').map(Number);
@@ -2112,6 +2124,7 @@
 
                     // Alle Tage zwischen Check-in (inklusive) und Check-out (exklusiv)
                     let currentDate = new Date(start);
+                    let daysCreated = 0;
                     while (currentDate < end) {
                         const year = currentDate.getFullYear();
                         const month = String(currentDate.getMonth() + 1).padStart(2, '0');
@@ -2125,9 +2138,14 @@
                                 isOccupied: true, // Markiere als "nur belegt"
                                 displayDate: dateStr
                             };
+                            daysCreated++;
+                            debugLog(`    - Added occupied day: ${dateStr}`);
                         }
                         currentDate.setDate(currentDate.getDate() + 1);
                     }
+                    debugLog(`  - ✅ Created ${daysCreated} occupied days`);
+                } else {
+                    debugLog(`  - ⚠️ NOT creating occupied days. Reason: checkInDate=${checkInDate}, checkOutDate=${checkOutDate}, match=${checkInDate === checkOutDate}`);
                 }
 
                 // Check-out Tag (= Reinigungstag)
