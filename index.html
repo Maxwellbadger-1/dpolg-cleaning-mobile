@@ -2127,24 +2127,45 @@
                 debugLog(`  - Final checkInDate: ${checkInDate}, checkOutDate: ${checkOutDate}`);
                 debugLog(`  - emojis_start: ${task.emojis_start}`);
 
-                // NUR Check-in Tag (erster Tag) anzeigen, wenn emojis_start vorhanden ist
-                // (z.B. Bettwäsche wechseln bei Anreise)
-                if (checkInDate && checkInDate !== checkOutDate && task.emojis_start) {
-                    debugLog(`  - ✅ Check-in day has emojis_start - adding check-in task`);
+                // Erstelle ALLE Belegungstage (Check-in bis vor Check-out)
+                // Check-in Tag ist nur "aktive Aufgabe" wenn emojis_start vorhanden
+                if (checkInDate && checkInDate !== checkOutDate) {
+                    debugLog(`  - ✅ Creating occupied days from ${checkInDate} to ${checkOutDate}`);
 
-                    // Nur den Check-in Tag hinzufügen (NICHT die Tage dazwischen)
-                    if (!roomTasks[task.room_name][checkInDate]) {
-                        roomTasks[task.room_name][checkInDate] = {
-                            ...task,
-                            isOccupied: true, // Markiere als Check-in Tag mit Aufgaben
-                            displayDate: checkInDate
-                        };
-                        debugLog(`    - Added check-in day: ${checkInDate}`);
+                    const [startYear, startMonth, startDay] = checkInDate.split('-').map(Number);
+                    const [endYear, endMonth, endDay] = checkOutDate.split('-').map(Number);
+
+                    const start = new Date(startYear, startMonth - 1, startDay);
+                    const end = new Date(endYear, endMonth - 1, endDay);
+
+                    // Alle Tage zwischen Check-in (inklusive) und Check-out (exklusiv)
+                    let loopDate = new Date(start);
+                    let daysCreated = 0;
+                    while (loopDate < end) {
+                        const year = loopDate.getFullYear();
+                        const month = String(loopDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(loopDate.getDate()).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${day}`;
+
+                        // Nur hinzufügen wenn nicht schon vorhanden
+                        if (dateStr !== checkOutDate && !roomTasks[task.room_name][dateStr]) {
+                            const isCheckInDay = (dateStr === checkInDate);
+                            const hasCheckInTasks = (isCheckInDay && task.emojis_start);
+
+                            roomTasks[task.room_name][dateStr] = {
+                                ...task,
+                                isOccupied: true, // Markiere als belegt
+                                hasCheckInTasks: hasCheckInTasks, // Nur true wenn Check-in + emojis_start
+                                displayDate: dateStr
+                            };
+                            daysCreated++;
+                            debugLog(`    - Added ${isCheckInDay ? 'check-in' : 'occupied'} day: ${dateStr}${hasCheckInTasks ? ' (HAS TASKS: ' + task.emojis_start + ')' : ' (no tasks)'}`);
+                        }
+                        loopDate.setDate(loopDate.getDate() + 1);
                     }
-                } else if (checkInDate && checkInDate !== checkOutDate && !task.emojis_start) {
-                    debugLog(`  - ⚠️ Check-in day has NO emojis_start - skipping (no tasks for cleaning crew)`);
-                } else if (checkInDate === checkOutDate) {
-                    debugLog(`  - ⚠️ Single-day booking (check-in = check-out) - only checkout task needed`);
+                    debugLog(`  - ✅ Created ${daysCreated} occupied days`);
+                } else {
+                    debugLog(`  - ⚠️ NOT creating occupied days. Reason: checkInDate=${checkInDate}, checkOutDate=${checkOutDate}, match=${checkInDate === checkOutDate}`);
                 }
 
                 // Check-out Tag (= Reinigungstag)
@@ -2218,15 +2239,31 @@
                     if (task) {
                         const isCompleted = task.status === 'done';
                         const isOccupied = task.isOccupied;
+                        const hasCheckInTasks = task.hasCheckInTasks; // Check-in Tag mit Aufgaben (z.B. Bettwäsche)
                         const priorityClass = task.priority === 'high' ? 'priority-high' : 'priority-normal';
 
-                        if (isOccupied) {
-                            // Nur belegt (nicht reinigen)
+                        if (isOccupied && !hasCheckInTasks) {
+                            // Nur belegt (ausgegraut) - keine Aufgaben
                             html += `
                                 <div class="timeline-task occupied">
                                     <div class="timeline-task-guest">${task.guest_name}</div>
                                     ${task.reservierungsnummer ? `<div style="color: var(--slate-500); font-size: 10px; margin-top: 2px;">📋 ${task.reservierungsnummer}</div>` : ''}
                                     <div class="timeline-task-time">Belegt</div>
+                                </div>
+                            `;
+                        } else if (isOccupied && hasCheckInTasks) {
+                            // Check-in Tag mit Aufgaben (aktiv) - z.B. Bettwäsche wechseln
+                            html += `
+                                <div class="timeline-task ${priorityClass}"
+                                     onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}')">
+                                    <div class="timeline-task-guest">${task.guest_name}</div>
+                                    ${task.reservierungsnummer ? `<div style="color: var(--slate-400); font-size: 10px; margin-top: 2px;">📋 ${task.reservierungsnummer}</div>` : ''}
+                                    <div class="timeline-task-time">Check-in: ${task.checkin_time || 'N/A'}</div>
+                                    <div class="timeline-task-icons">
+                                        ${task.guest_count ? '👥' + task.guest_count : ''}
+                                        ${task.emojis_start ? task.emojis_start : ''}
+                                        ${isCompleted ? '✅' : ''}
+                                    </div>
                                 </div>
                             `;
                         } else {
