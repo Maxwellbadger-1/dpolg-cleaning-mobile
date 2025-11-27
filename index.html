@@ -1909,6 +1909,20 @@
                         // Log first task for debugging
                         if (rowIdx === 0) {
                             debugLog('📝 Sample task (first):', task);
+                            debugLog('🔍 EXTRAS FIELD CONTENT:', task.extras);
+                            if (task.extras) {
+                                try {
+                                    const extrasObj = JSON.parse(task.extras);
+                                    debugLog('✅ Extras parsed successfully:', extrasObj);
+                                    debugLog('  - original_checkin:', extrasObj.original_checkin);
+                                    debugLog('  - original_checkout:', extrasObj.original_checkout);
+                                    debugLog('  - guest_count:', extrasObj.guest_count);
+                                } catch (e) {
+                                    debugLog('❌ Failed to parse extras:', e);
+                                }
+                            } else {
+                                debugLog('⚠️ task.extras is NULL or undefined!');
+                            }
                         }
 
                         return task;
