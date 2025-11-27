@@ -2008,12 +2008,43 @@
         }
 
         // Tasks anzeigen
-        function displayTasks() {
+        let displayTasksCallCount = 0;
+        let displayTasksDebounceTimer = null;
+
+        // Actual display function (not debounced)
+        function displayTasksImmediate() {
+            displayTasksCallCount++;
+            debugLog(`🎨 displayTasks() EXECUTED (call #${displayTasksCallCount})`);
+            debugLog(`  - currentView: ${currentView}`);
+            debugLog(`  - allTasks.length: ${allTasks.length}`);
+
+            // Get stack trace to see WHO called this
+            const stack = new Error().stack;
+            const caller = stack.split('\n')[3]?.trim() || 'unknown';
+            debugLog(`  - Called from: ${caller}`);
+
             if (currentView === 'list') {
                 displayListView();
             } else {
                 displayTimelineView();
             }
+        }
+
+        // Debounced version (wait 50ms for rapid calls to settle)
+        function displayTasks() {
+            debugLog(`🎨 displayTasks() QUEUED`);
+
+            // Clear any existing timer
+            if (displayTasksDebounceTimer) {
+                clearTimeout(displayTasksDebounceTimer);
+                debugLog(`  - Cancelled previous call`);
+            }
+
+            // Schedule execution
+            displayTasksDebounceTimer = setTimeout(() => {
+                displayTasksDebounceTimer = null;
+                displayTasksImmediate();
+            }, 50); // 50ms debounce
         }
 
         // Listen-Ansicht
