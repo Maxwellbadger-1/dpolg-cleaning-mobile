@@ -2007,12 +2007,14 @@
             }
 
             const activeTasks = [];
-            const roomTasks = {};
+            const processedTasks = new Set(); // Track processed task IDs to avoid duplicates
 
             filteredTasks.forEach(task => {
-                if (!roomTasks[task.room_name]) {
-                    roomTasks[task.room_name] = {};
+                // Skip if already processed (avoid duplicates)
+                if (processedTasks.has(task.id)) {
+                    return;
                 }
+                processedTasks.add(task.id);
 
                 let checkInDate = null;
                 let checkOutDate = task.date || task.task_date;
