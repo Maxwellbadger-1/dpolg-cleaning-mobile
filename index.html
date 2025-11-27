@@ -1999,13 +1999,69 @@
         function displayListView() {
             const content = document.getElementById('content');
 
-            // Filter Tasks: Datum + Ort (SNAKE_CASE für Turso DB!)
-            let todayTasks = allTasks.filter(task => (task.date || task.task_date) === currentDate);
+            // Erstelle roomTasks mit der gleichen Logik wie Timeline
+            // (aber zeige nur aktive Aufgaben, nicht ausgegraute Belegungstage)
+            let filteredTasks = allTasks;
             if (selectedLocation !== 'all') {
-                todayTasks = todayTasks.filter(task => task.room_location === selectedLocation);
+                filteredTasks = allTasks.filter(task => task.room_location === selectedLocation);
             }
 
-            if (todayTasks.length === 0) {
+            const activeTasks = [];
+            const roomTasks = {};
+
+            filteredTasks.forEach(task => {
+                if (!roomTasks[task.room_name]) {
+                    roomTasks[task.room_name] = {};
+                }
+
+                let checkInDate = null;
+                let checkOutDate = task.date || task.task_date;
+
+                try {
+                    const extras = JSON.parse(task.extras || '{}');
+                    if (extras.original_checkin) {
+                        checkInDate = extras.original_checkin;
+                    } else if (task.checkin_time) {
+                        checkInDate = task.checkin_time;
+                    }
+                } catch (e) {
+                    // Ignore parse errors
+                }
+
+                // Check-in Tag mit Aufgaben (z.B. Bettwäsche)
+                if (checkInDate && checkInDate !== checkOutDate && task.emojis_start) {
+                    const checkInTask = {
+                        ...task,
+                        displayDate: checkInDate,
+                        taskType: 'check-in',
+                        isOccupied: true,
+                        hasCheckInTasks: true
+                    };
+                    activeTasks.push(checkInTask);
+                }
+
+                // Check-out Tag (immer)
+                const checkOutTask = {
+                    ...task,
+                    displayDate: checkOutDate,
+                    taskType: 'check-out',
+                    isOccupied: false,
+                    hasCheckInTasks: false
+                };
+                activeTasks.push(checkOutTask);
+            });
+
+            // Sortiere nach Datum
+            activeTasks.sort((a, b) => {
+                const dateCompare = a.displayDate.localeCompare(b.displayDate);
+                if (dateCompare !== 0) return dateCompare;
+                return a.room_name.localeCompare(b.room_name, undefined, { numeric: true });
+            });
+
+            // Filtere nach currentDate wenn in List View
+            const displayTasks = activeTasks.filter(task => task.displayDate === currentDate);
+
+            if (displayTasks.length === 0) {
                 content.innerHTML = `
                     <div class="empty-state">
                         <div class="emoji">✨</div>
@@ -2015,9 +2071,19 @@
                 return;
             }
 
-            content.innerHTML = todayTasks.map(task => {
-                const extras = task.extras ? JSON.parse(task.extras) : {};
+            content.innerHTML = displayTasks.map(task => {
+                const extras = task.extras ? JSON.parse(task.extras || '{}') : {};
                 const isCompleted = task.status === 'done';
+                const isCheckInTask = task.taskType === 'check-in';
+
+                // Format date for display
+                const dateObj = new Date(task.displayDate + 'T00:00:00');
+                const dateDisplay = dateObj.toLocaleDateString('de-DE', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
 
                 return `
                     <div class="task-card priority-${task.priority}">
@@ -2025,6 +2091,7 @@
                             <div>
                                 <div class="room-name">${task.room_name}</div>
                                 ${task.room_location ? `<div class="room-location">📍 ${task.room_location}</div>` : ''}
+                                <div style="color: var(--blue-400); font-size: 13px; margin-top: 4px;">📅 ${dateDisplay}</div>
                             </div>
                             ${task.priority === 'high' ? '<span class="priority-badge priority-high">⚠️ HIGH</span>' : ''}
                         </div>
@@ -2035,14 +2102,16 @@
                         </div>
 
                         <div class="time-info">
-                            ⏰ Check-out: ${task.checkout_time}
-                            ${task.checkin_time ? `<br>🔑 Check-in: ${task.checkin_time} (Same Day!)` : ''}
+                            ${isCheckInTask
+                                ? `🔑 Check-in: ${task.checkin_time || 'N/A'}`
+                                : `⏰ Check-out: ${task.checkout_time}`
+                            }
                         </div>
 
                         <div class="services">
                             <span class="service-tag">👥 ${task.guest_count} ${task.guest_count === 1 ? 'Gast' : 'Gäste'}</span>
-                            ${task.emojis_start ? `<span class="service-tag">📅 Vor Anreise: ${task.emojis_start}</span>` : ''}
-                            ${task.emojis_end ? `<span class="service-tag">🏁 Nach Abreise: ${task.emojis_end}</span>` : ''}
+                            ${isCheckInTask && task.emojis_start ? `<span class="service-tag">🛌 Check-in Aufgaben: ${task.emojis_start}</span>` : ''}
+                            ${!isCheckInTask && task.emojis_end ? `<span class="service-tag">🏁 Nach Abreise: ${task.emojis_end}</span>` : ''}
                         </div>
 
                         ${task.notes ? `<div class="notes">📝 ${task.notes}</div>` : ''}
