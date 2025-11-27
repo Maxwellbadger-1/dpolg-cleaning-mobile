@@ -1929,6 +1929,27 @@
                     });
 
                     debugLog(`✅ Tasks converted: ${oldTaskCount} → ${allTasks.length}`);
+
+                    // 🔍 DEBUG: Check for duplicate IDs in Turso data
+                    const seenIds = new Set();
+                    const duplicateIds = new Set();
+                    allTasks.forEach(task => {
+                        if (seenIds.has(task.id)) {
+                            duplicateIds.add(task.id);
+                        } else {
+                            seenIds.add(task.id);
+                        }
+                    });
+                    if (duplicateIds.size > 0) {
+                        debugLog(`🚨 WARNING: ${duplicateIds.size} duplicate IDs found in Turso data!`);
+                        duplicateIds.forEach(id => {
+                            const dupes = allTasks.filter(t => t.id === id);
+                            debugLog(`  - ID ${id}: ${dupes.length} copies (room: ${dupes[0].room_name}, date: ${dupes[0].date})`);
+                        });
+                    } else {
+                        debugLog('✅ No duplicate IDs in Turso data');
+                    }
+
                     debugLog(`📊 Task status breakdown:`);
 
                     // Count task statuses
