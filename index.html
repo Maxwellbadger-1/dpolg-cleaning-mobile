@@ -633,27 +633,6 @@
             font-weight: 500;
         }
 
-        .refresh-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: white;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
-            transition: all 0.2s;
-            z-index: 1000;
-        }
-
-        .refresh-btn:active {
-            transform: scale(0.95);
-        }
-
         /* Toast Notification System */
         .toast-container {
             position: fixed;
@@ -768,60 +747,6 @@
 
         @keyframes spin {
             to { transform: rotate(360deg); }
-        }
-
-        /* Debug Panel */
-        .debug-panel {
-            position: fixed;
-            bottom: 80px;
-            left: 20px;
-            background: var(--slate-800);
-            border: 2px solid var(--warning);
-            border-radius: 12px;
-            padding: 16px;
-            max-width: 90%;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 9999;
-            font-size: 12px;
-            font-family: monospace;
-            color: var(--slate-300);
-            display: none;
-        }
-
-        .debug-panel.visible {
-            display: block;
-        }
-
-        .debug-entry {
-            padding: 4px 0;
-            border-bottom: 1px solid var(--slate-700);
-        }
-
-        .debug-time {
-            color: var(--slate-500);
-            margin-right: 8px;
-        }
-
-        .debug-toggle {
-            position: fixed;
-            bottom: 24px;
-            left: 24px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: var(--warning);
-            color: white;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
-            transition: all 0.2s;
-            z-index: 1000;
-        }
-
-        .debug-toggle:active {
-            transform: scale(0.95);
         }
 
         /* Timeline View Styles */
@@ -1170,17 +1095,8 @@
         <div class="loading">Lädt Aufgaben...</div>
     </div>
 
-    <button class="refresh-btn" onclick="loadTasks()">🔄</button>
-    <button class="debug-toggle" onclick="toggleDebugPanel()">🐛</button>
-
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
-
-    <!-- Debug Panel -->
-    <div class="debug-panel" id="debug-panel">
-        <h3 style="color: var(--warning); margin-bottom: 12px;">🐛 Debug Log</h3>
-        <div id="debug-entries"></div>
-    </div>
 
     <!-- Filter Bottom Sheet Modal -->
     <div class="filter-modal" id="filterModal" onclick="closeFilterModalIfBackdrop(event)">
@@ -1362,54 +1278,8 @@
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // 🐛 DEBUG PANEL SYSTEM
-        // ═══════════════════════════════════════════════════════════════
-
         function debugLog(message, data = null) {
-            const timestamp = new Date().toLocaleTimeString('de-DE', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                fractionalSecondDigits: 3
-            });
-
-            // Console log with emoji prefix
-            if (data) {
-                console.log(`🐛 [${timestamp}] ${message}`, data);
-            } else {
-                console.log(`🐛 [${timestamp}] ${message}`);
-            }
-
-            // Add to debug panel
-            const panel = document.getElementById('debug-entries');
-            if (panel) {
-                const entry = document.createElement('div');
-                entry.className = 'debug-entry';
-                entry.innerHTML = `
-                    <span class="debug-time">${timestamp}</span>
-                    <span>${message}</span>
-                    ${data ? `<pre style="margin-top: 4px; color: var(--slate-400);">${JSON.stringify(data, null, 2)}</pre>` : ''}
-                `;
-                panel.insertBefore(entry, panel.firstChild);
-
-                // Limit entries to 50
-                while (panel.children.length > 50) {
-                    panel.removeChild(panel.lastChild);
-                }
-            }
-        }
-
-        function toggleDebugPanel() {
-            const panel = document.getElementById('debug-panel');
-            panel.classList.toggle('visible');
-        }
-
-        function clearDebugLog() {
-            const panel = document.getElementById('debug-entries');
-            if (panel) {
-                panel.innerHTML = '';
-            }
+            // Debug logging disabled in production
         }
 
         // Datum formatieren
