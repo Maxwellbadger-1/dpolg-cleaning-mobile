@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { action, taskId, newStatus } = req.body;
+    const { action, taskId, newStatus, taskType } = req.body;
 
     let requests;
 
@@ -38,12 +38,13 @@ module.exports = async (req, res) => {
         }
       ];
     } else if (action === 'toggleTask') {
-      // UPDATE task status (nur status, ohne completed_at da Spalte nicht existiert)
+      // UPDATE task status – spaltenspezifisch je nach taskType
+      const column = taskType === 'check-in' ? 'status_start' : 'status_end';
       requests = [
         {
           type: "execute",
           stmt: {
-            sql: "UPDATE cleaning_tasks SET status = ? WHERE id = ?",
+            sql: `UPDATE cleaning_tasks SET ${column} = ? WHERE id = ?`,
             args: [
               { type: "text", value: String(newStatus) },
               { type: "integer", value: String(taskId) }  // ← WICHTIG: value muss String sein!

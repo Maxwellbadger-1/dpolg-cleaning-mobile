@@ -1997,8 +1997,10 @@
 
             content.innerHTML = displayTasks.map(task => {
                 const extras = task.extras ? JSON.parse(task.extras || '{}') : {};
-                const isCompleted = task.status === 'done';
                 const isCheckInTask = task.taskType === 'check-in';
+                const isCompleted = isCheckInTask
+                    ? (task.status_start === 'done')
+                    : (task.status_end === 'done');
 
                 // Format date for display
                 const dateObj = new Date(task.displayDate + 'T00:00:00');
@@ -2041,7 +2043,7 @@
                         ${task.notes ? `<div class="notes">📝 ${task.notes}</div>` : ''}
 
                         <button class="complete-btn ${isCompleted ? 'completed' : ''}"
-                                onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}')">
+                                onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}', '${task.taskType}')">
                             ${isCompleted ? '✅ Erledigt' : '⬜ Als erledigt markieren'}
                         </button>
                     </div>
@@ -2120,7 +2122,8 @@
 
                 // Parse Check-in/Check-out aus extras JSON
                 let checkInDate = null;
-                let checkOutDate = task.date || task.task_date; // Checkout Date (support both column names)
+                let checkOutDate = task.date || task.task_date; // Putztermin (COALESCE(putzplan, checkout))
+                let occupancyEndDate = checkOutDate; // Echtes Abreisedatum (Fallback: checkOutDate)
 
                 debugLog(`🔍 Processing task for room ${task.room_name}:`);
                 debugLog(`  - task.date: ${task.date}`);
@@ -2139,20 +2142,25 @@
                         checkInDate = task.checkin_time;
                         debugLog(`  - checkInDate from task.checkin_time: ${checkInDate}`);
                     }
+                    // Echtes Abreisedatum für Belegungs-Visualisierung (≠ Putztermin bei putzplan_checkout_date)
+                    if (extras.original_checkout) {
+                        occupancyEndDate = extras.original_checkout;
+                        debugLog(`  - occupancyEndDate from extras.original_checkout: ${occupancyEndDate}`);
+                    }
                 } catch (e) {
                     debugLog(`  - ❌ Error parsing extras: ${e}`);
                 }
 
-                debugLog(`  - Final checkInDate: ${checkInDate}, checkOutDate: ${checkOutDate}`);
+                debugLog(`  - Final checkInDate: ${checkInDate}, checkOutDate (Putztermin): ${checkOutDate}, occupancyEndDate: ${occupancyEndDate}`);
                 debugLog(`  - emojis_start: ${task.emojis_start}`);
 
-                // Erstelle ALLE Belegungstage (Check-in bis vor Check-out)
+                // Erstelle ALLE Belegungstage (Check-in bis vor echtem Abreisedatum)
                 // Check-in Tag ist nur "aktive Aufgabe" wenn emojis_start vorhanden
-                if (checkInDate && checkInDate !== checkOutDate) {
-                    debugLog(`  - ✅ Creating occupied days from ${checkInDate} to ${checkOutDate}`);
+                if (checkInDate && checkInDate !== occupancyEndDate) {
+                    debugLog(`  - ✅ Creating occupied days from ${checkInDate} to ${occupancyEndDate}`);
 
                     const [startYear, startMonth, startDay] = checkInDate.split('-').map(Number);
-                    const [endYear, endMonth, endDay] = checkOutDate.split('-').map(Number);
+                    const [endYear, endMonth, endDay] = occupancyEndDate.split('-').map(Number);
 
                     const start = new Date(startYear, startMonth - 1, startDay);
                     const end = new Date(endYear, endMonth - 1, endDay);
@@ -2184,7 +2192,7 @@
                     }
                     debugLog(`  - ✅ Created ${daysCreated} occupied days`);
                 } else {
-                    debugLog(`  - ⚠️ NOT creating occupied days. Reason: checkInDate=${checkInDate}, checkOutDate=${checkOutDate}, match=${checkInDate === checkOutDate}`);
+                    debugLog(`  - ⚠️ NOT creating occupied days. Reason: checkInDate=${checkInDate}, occupancyEndDate=${occupancyEndDate}, match=${checkInDate === occupancyEndDate}`);
                 }
 
                 // Check-out Tag (= Reinigungstag)
@@ -2256,7 +2264,8 @@
                     html += '<div class="timeline-cell">';
 
                     if (task) {
-                        const isCompleted = task.status === 'done';
+                        const isCompletedStart = task.status_start === 'done'; // Check-in
+                        const isCompletedEnd   = task.status_end   === 'done'; // Check-out
                         const isOccupied = task.isOccupied;
                         const hasCheckInTasks = task.hasCheckInTasks; // Check-in Tag mit Aufgaben (z.B. Bettwäsche)
                         const priorityClass = task.priority === 'high' ? 'priority-high' : 'priority-normal';
@@ -2274,29 +2283,29 @@
                             // Check-in Tag mit Aufgaben (aktiv) - z.B. Bettwäsche wechseln
                             html += `
                                 <div class="timeline-task ${priorityClass}"
-                                     onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}')">
+                                     onclick="toggleTask(${task.id}, '${isCompletedStart ? 'pending' : 'done'}', 'check-in')">
                                     <div class="timeline-task-guest">${task.guest_name}</div>
                                     ${task.reservierungsnummer ? `<div style="color: var(--slate-400); font-size: 10px; margin-top: 2px;">📋 ${task.reservierungsnummer}</div>` : ''}
                                     <div class="timeline-task-time">Check-in: ${task.checkin_time || 'N/A'}</div>
                                     <div class="timeline-task-icons">
                                         ${task.guest_count ? '👥' + task.guest_count : ''}
                                         ${task.emojis_start ? task.emojis_start : ''}
-                                        ${isCompleted ? '✅' : ''}
+                                        ${isCompletedStart ? '✅' : ''}
                                     </div>
                                 </div>
                             `;
                         } else {
                             // Check-out / Reinigungstag
                             html += `
-                                <div class="timeline-task ${priorityClass} ${isCompleted ? 'completed' : ''}"
-                                     onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}')">
+                                <div class="timeline-task ${priorityClass} ${isCompletedEnd ? 'completed' : ''}"
+                                     onclick="toggleTask(${task.id}, '${isCompletedEnd ? 'pending' : 'done'}', 'check-out')">
                                     <div class="timeline-task-guest">${task.guest_name}</div>
                                     ${task.reservierungsnummer ? `<div style="color: var(--slate-400); font-size: 10px; margin-top: 2px;">📋 ${task.reservierungsnummer}</div>` : ''}
                                     <div class="timeline-task-time">⏰ ${task.checkout_time}</div>
                                     <div class="timeline-task-icons">
                                         ${task.guest_count ? '👥' + task.guest_count : ''}
                                         ${task.emojis_end ? task.emojis_end : ''}
-                                        ${isCompleted ? '✅' : ''}
+                                        ${isCompletedEnd ? '✅' : ''}
                                     </div>
                                 </div>
                             `;
@@ -2316,13 +2325,13 @@
         // ═══════════════════════════════════════════════════════════════
         // 🔄 TOGGLE TASK STATUS (WITH OPTIMISTIC UI UPDATE)
         // ═══════════════════════════════════════════════════════════════
-        async function toggleTask(taskId, newStatus) {
+        async function toggleTask(taskId, newStatus, taskType) {
             debugLog('═══════════════════════════════════════════════════════');
             debugLog('🔄 TOGGLE TASK STARTED (OPTIMISTIC UI)');
             debugLog('═══════════════════════════════════════════════════════');
 
             try {
-                debugLog('Input parameters:', { taskId, newStatus });
+                debugLog('Input parameters:', { taskId, newStatus, taskType });
 
                 // 1️⃣ OPTIMISTIC UPDATE - Find task and backup old state
                 const taskIdStr = String(taskId);
@@ -2339,12 +2348,15 @@
                     id: task.id,
                     room: task.room_name,
                     guest: task.guest_name,
-                    currentStatus: task.status
+                    status_start: task.status_start,
+                    status_end: task.status_end,
+                    taskType
                 });
 
                 // Backup old status for rollback
-                const oldStatus = task.status;
-                debugLog(`💾 Backup: oldStatus="${oldStatus}"`);
+                const oldStatusStart = task.status_start;
+                const oldStatusEnd   = task.status_end;
+                debugLog(`💾 Backup: status_start="${oldStatusStart}", status_end="${oldStatusEnd}"`);
 
                 // 2️⃣ INSTANT UI UPDATE - Save scroll position first!
                 // Finde das richtig scrollende Element (List-View vs Timeline-View)
@@ -2360,9 +2372,13 @@
                 debugLog(`   - scrollTop: ${scrollTop}`);
                 debugLog(`   - scrollLeft: ${scrollLeft}`);
 
-                // Update task status immediately (optimistic)
-                allTasks[taskIndex].status = newStatus;
-                debugLog(`⚡ INSTANT UPDATE: status="${oldStatus}" → "${newStatus}"`);
+                // Update task status immediately (optimistic) – nur die betroffene Spalte
+                if (taskType === 'check-in') {
+                    allTasks[taskIndex].status_start = newStatus;
+                } else {
+                    allTasks[taskIndex].status_end = newStatus;
+                }
+                debugLog(`⚡ INSTANT UPDATE: ${taskType === 'check-in' ? 'status_start' : 'status_end'} → "${newStatus}"`);
 
                 // Redraw UI immediately (< 10ms)
                 const uiStartTime = performance.now();
@@ -2404,7 +2420,8 @@
                     body: JSON.stringify({
                         action: 'toggleTask',
                         taskId: taskId,
-                        newStatus: newStatus
+                        newStatus: newStatus,
+                        taskType: taskType
                     }),
                     cache: 'no-store'  // 🔥 Disable browser cache to always get fresh data!
                 });
@@ -2433,8 +2450,9 @@
                     debugLog('Error response:', data);
 
                     // Rollback to old status
-                    allTasks[taskIndex].status = oldStatus;
-                    debugLog(`↩️ ROLLBACK: status="${newStatus}" → "${oldStatus}"`);
+                    allTasks[taskIndex].status_start = oldStatusStart;
+                    allTasks[taskIndex].status_end   = oldStatusEnd;
+                    debugLog(`↩️ ROLLBACK: status_start="${oldStatusStart}", status_end="${oldStatusEnd}"`);
 
                     // Save scroll position before rollback
                     const rollbackTimelineContainer = document.querySelector('.timeline-container');
@@ -2477,9 +2495,9 @@
                 // Rollback to old status
                 const errorTaskIndex = allTasks.findIndex(t => String(t.id) === String(taskId));
                 if (errorTaskIndex >= 0) {
-                    const errorOldStatus = allTasks[errorTaskIndex].status === 'done' ? 'pending' : 'done'; // Reverse
-                    allTasks[errorTaskIndex].status = errorOldStatus;
-                    debugLog(`↩️ ROLLBACK to oldStatus="${errorOldStatus}"`);
+                    allTasks[errorTaskIndex].status_start = oldStatusStart;
+                    allTasks[errorTaskIndex].status_end   = oldStatusEnd;
+                    debugLog(`↩️ ROLLBACK to status_start="${oldStatusStart}", status_end="${oldStatusEnd}"`);
 
                     // Save scroll position before rollback
                     const content = document.getElementById('content');
