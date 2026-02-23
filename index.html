@@ -2142,11 +2142,8 @@
                         checkInDate = task.checkin_time;
                         debugLog(`  - checkInDate from task.checkin_time: ${checkInDate}`);
                     }
-                    // Echtes Abreisedatum für Belegungs-Visualisierung (≠ Putztermin bei putzplan_checkout_date)
-                    if (extras.original_checkout) {
-                        occupancyEndDate = extras.original_checkout;
-                        debugLog(`  - occupancyEndDate from extras.original_checkout: ${occupancyEndDate}`);
-                    }
+                    // occupancyEndDate bleibt = checkOutDate = COALESCE(putzplan_checkout_date, checkout_date)
+                    // Belegung endet am effektiven Reinigungstag, nicht am originalen Buchungs-Checkout
                 } catch (e) {
                     debugLog(`  - ❌ Error parsing extras: ${e}`);
                 }
