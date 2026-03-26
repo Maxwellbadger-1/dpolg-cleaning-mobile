@@ -2036,36 +2036,43 @@
                     year: 'numeric'
                 });
 
+                const isGesperrt = task.guest_name === 'Gesperrt' || (task.reservierungsnummer && task.reservierungsnummer.startsWith('GSPR-'));
                 return `
-                    <div class="task-card priority-${task.priority}">
+                    <div class="task-card priority-${task.priority}" style="${isGesperrt ? 'border-left: 4px solid #dc2626; opacity: 0.85;' : ''}">
                         <div class="task-header">
                             <div>
                                 <div class="room-name">${task.room_name}</div>
                                 ${task.room_location ? `<div class="room-location">📍 ${task.room_location}</div>` : ''}
                                 <div style="color: var(--blue-400); font-size: 13px; margin-top: 4px;">📅 ${dateDisplay}</div>
                             </div>
-                            ${task.priority === 'high' ? '<span class="priority-badge priority-high">⚠️ HIGH</span>' : ''}
+                            ${isGesperrt
+                                ? '<span style="background: #dc2626; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">🔒 GESPERRT</span>'
+                                : (task.priority === 'high' ? '<span class="priority-badge priority-high">⚠️ HIGH</span>' : '')
+                            }
                         </div>
 
                         <div class="guest-name">
-                            👤 ${task.guest_name}
-                            ${task.reservierungsnummer ? `<span style="color: var(--slate-400); font-size: 13px; margin-left: 8px;">📋 ${task.reservierungsnummer}</span>` : ''}
+                            ${isGesperrt
+                                ? `<span style="color: #dc2626; font-weight: 600;">🔒 Zimmer gesperrt</span>${task.notes ? ` — ${task.notes}` : ''}`
+                                : `👤 ${task.guest_name}
+                                   ${task.reservierungsnummer ? `<span style="color: var(--slate-400); font-size: 13px; margin-left: 8px;">📋 ${task.reservierungsnummer}</span>` : ''}`
+                            }
                         </div>
 
-                        <div class="time-info">
+                        ${!isGesperrt ? `<div class="time-info">
                             ${isCheckInTask
                                 ? `🔑 Check-in: ${task.checkin_time || 'N/A'}`
                                 : `⏰ Check-out: ${task.checkout_time}`
                             }
-                        </div>
+                        </div>` : ''}
 
-                        <div class="services">
+                        ${!isGesperrt ? `<div class="services">
                             <span class="service-tag">👥 ${task.guest_count} ${task.guest_count === 1 ? 'Gast' : 'Gäste'}</span>
                             ${isCheckInTask && task.emojis_start ? `<span class="service-tag">🛌 Check-in Aufgaben: ${task.emojis_start}</span>` : ''}
                             ${!isCheckInTask && task.emojis_end ? `<span class="service-tag">🏁 Nach Abreise: ${task.emojis_end}</span>` : ''}
-                        </div>
+                        </div>` : ''}
 
-                        ${task.notes ? `<div class="notes">📝 ${task.notes}</div>` : ''}
+                        ${!isGesperrt && task.notes ? `<div class="notes">📝 ${task.notes}</div>` : ''}
 
                         <button class="complete-btn ${isCompleted ? 'completed' : ''}"
                                 onclick="toggleTask(${task.id}, '${isCompleted ? 'pending' : 'done'}', '${task.taskType}')">
