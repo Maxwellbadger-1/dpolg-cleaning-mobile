@@ -1101,8 +1101,8 @@
                 <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
             </button>
             <div class="view-switcher">
-                <button class="view-btn active" onclick="switchView('list')">📋</button>
-                <button class="view-btn" onclick="switchView('timeline')">📅</button>
+                <button class="view-btn" onclick="switchView('list')">📋</button>
+                <button class="view-btn active" onclick="switchView('timeline')">📅</button>
             </div>
         </div>
     </div>
@@ -1888,8 +1888,9 @@
             });
             event.target.classList.add('active');
 
-            // Update filter chips (date chip visibility depends on view)
-            updateFilterChips();
+            // Filter-Modal aktualisieren: zeigt Datum-Filter in Listen-Ansicht,
+            // Monats-Filter in Timeline-Ansicht. Ruft intern auch updateFilterChips() auf.
+            generateFilterOptions();
 
             // View neu rendern
             displayTasks();
@@ -1976,8 +1977,8 @@
                     // Ignore parse errors
                 }
 
-                // Check-in Tag mit Aufgaben (z.B. Bettwäsche)
-                if (checkInDate && checkInDate !== checkOutDate && task.emojis_start) {
+                // Check-in Tag (Anreise) – immer anzeigen wenn Checkin-Datum vorhanden
+                if (checkInDate && checkInDate !== checkOutDate) {
                     const checkInTask = {
                         ...task,
                         displayDate: checkInDate,
