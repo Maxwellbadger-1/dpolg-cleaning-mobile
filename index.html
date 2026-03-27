@@ -2296,9 +2296,16 @@
                         const isOccupied = task.isOccupied;
                         const hasCheckInTasks = task.hasCheckInTasks; // Check-in Tag mit Aufgaben (z.B. Bettwäsche)
                         const priorityClass = task.priority === 'high' ? 'priority-high' : 'priority-normal';
-
                         const isCheckInDay = task.isCheckInDay;
-                        if (isOccupied && !hasCheckInTasks) {
+                        const isGesperrt = task.guest_name === 'Gesperrt' || (task.reservierungsnummer && task.reservierungsnummer.startsWith('GSPR-'));
+
+                        if (isGesperrt) {
+                            html += `
+                                <div class="timeline-task occupied">
+                                    <div class="timeline-task-guest">Gesperrt</div>
+                                </div>
+                            `;
+                        } else if (isOccupied && !hasCheckInTasks) {
                             // Nur belegt (ausgegraut) - keine Aufgaben
                             html += `
                                 <div class="timeline-task occupied">
